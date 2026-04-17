@@ -38,7 +38,11 @@ class OnBoardingScreen extends StatelessWidget {
 
             const SizedBox(height: 10),
 
-            Image.asset('assets/logo/logo.png', height: 100, width: 100),
+            Image.asset(
+              'assets/icons/helmet_front.png',
+              height: 100,
+              width: 100,
+            ),
 
             const SizedBox(height: 10),
 
@@ -46,7 +50,7 @@ class OnBoardingScreen extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
                 Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     const FaIcon(FontAwesomeIcons.bell),
 
@@ -68,7 +72,69 @@ class OnBoardingScreen extends StatelessWidget {
                           style: TextStyle(
                             fontFamily: 'Montserrat',
                             fontSize: 14,
-                            color: Colors.grey[600],
+                            fontWeight: FontWeight.normal,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const FaIcon(FontAwesomeIcons.locationArrow),
+
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Live Navigation',
+                          style: TextStyle(
+                            fontFamily: 'Montserrat',
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+
+                        Text(
+                          'Real-time guidance to your destinations',
+                          style: TextStyle(
+                            fontFamily: 'Montserrat',
+                            fontSize: 14,
+                            fontWeight: FontWeight.normal,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const FaIcon(FontAwesomeIcons.phone),
+
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Hands-Free Communication',
+                          style: TextStyle(
+                            fontFamily: 'Montserrat',
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+
+                        Text(
+                          'Make and receive calls without taking your hands off the wheel',
+                          style: TextStyle(
+                            fontFamily: 'Montserrat',
+                            fontSize: 14,
+                            fontWeight: FontWeight.normal,
                           ),
                         ),
                       ],
@@ -76,6 +142,30 @@ class OnBoardingScreen extends StatelessWidget {
                   ],
                 ),
               ],
+            ),
+
+            const SizedBox(height: 20),
+
+            ElevatedButton(
+              onPressed: () {},
+              style: ElevatedButton.styleFrom(
+                foregroundColor: Colors.white,
+                backgroundColor: Colors.grey,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.horizontal(
+                    left: Radius.circular(10),
+                    right: Radius.circular(10),
+                  ),
+                ),
+              ),
+              child: Text(
+                'Get Started',
+                style: TextStyle(
+                  fontFamily: 'Montserrat',
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
             ),
           ],
         ),
