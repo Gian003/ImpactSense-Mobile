@@ -111,7 +111,7 @@ class SplashScreen extends StatelessWidget {
         return Opacity(
           opacity: value,
           child: Image.asset(
-            'assets/logo.png',
+            'assets/logo/logo.png',
             width: 200,
             height: 200,
             filterQuality: FilterQuality.high,
