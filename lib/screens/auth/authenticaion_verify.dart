@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:impactsense/core/theme/app_colors.dart';
+import 'package:impactsense/widgets/role_toggle.dart';
 
 class AuthenticationVerifyScreen extends StatefulWidget {
   const AuthenticationVerifyScreen({super.key});
@@ -26,33 +27,14 @@ class _AuthenticationVerifyScreenState
             children: [
               const SizedBox(height: 60),
 
-              Image.asset('assets/logo.png', height: 110, width: 110),
+              Image.asset('assets/logo/logo.png', height: 110, width: 110),
 
               const SizedBox(height: 40),
 
-              Container(
-                height: 50,
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(30),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.08),
-                      blurRadius: 8,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: Row(
-                  children: [
-                    _buildToggleOption('Riders', _isRiderSelected, () {
-                      setState(() => _isRiderSelected = true);
-                    }),
-                    _buildToggleOption('Patrols', !_isRiderSelected, () {
-                      setState(() => _isRiderSelected = false);
-                    }),
-                  ],
-                ),
+              RoleToggle(
+                selectedIndex: _isRiderSelected ? 0 : 1,
+                onChanged: (i) =>
+                    setState(() => _isRiderSelected = i == 0),
               ),
 
               const SizedBox(height: 48),
@@ -127,8 +109,10 @@ class _AuthenticationVerifyScreenState
                 width: double.infinity,
                 height: 54,
                 child: ElevatedButton(
-                  onPressed: () =>
-                      Navigator.pushNamed(context, '/register'),
+                  onPressed: () => Navigator.pushNamed(
+                    context,
+                    _isRiderSelected ? '/register' : '/patrol-register',
+                  ),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primaryColor,
                     foregroundColor: Colors.white,
@@ -151,31 +135,6 @@ class _AuthenticationVerifyScreenState
 
               const SizedBox(height: 40),
             ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildToggleOption(String label, bool isSelected, VoidCallback onTap) {
-    return Expanded(
-      child: GestureDetector(
-        onTap: onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          margin: const EdgeInsets.all(4),
-          decoration: BoxDecoration(
-            color: isSelected ? AppColors.primaryColor : Colors.white,
-            borderRadius: BorderRadius.circular(26),
-          ),
-          alignment: Alignment.center,
-          child: Text(
-            label,
-            style: GoogleFonts.poppins(
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-              color: isSelected ? Colors.white : const Color(0xFF1A1A1A),
-            ),
           ),
         ),
       ),

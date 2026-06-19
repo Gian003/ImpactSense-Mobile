@@ -5,10 +5,15 @@ import 'package:impactsense/screens/auth/login_screen.dart';
 import 'package:impactsense/screens/auth/otp_verify.dart';
 import 'package:impactsense/screens/auth/personal_information_screen.dart';
 import 'package:impactsense/screens/auth/registration_screen.dart';
-import 'package:impactsense/screens/emergency/accident_detected_screen.dart';
-import 'package:impactsense/screens/emergency/emergency_alert_sent_screen.dart';
-import 'package:impactsense/screens/home/home_screen.dart';
-import 'package:impactsense/screens/emergency/voice_assistant_screen.dart';
+import 'package:impactsense/screens/riders/emergency/accident_detected_screen.dart';
+import 'package:impactsense/screens/riders/emergency/emergency_alert_sent_screen.dart';
+import 'package:impactsense/screens/riders/home/home_screen.dart';
+import 'package:impactsense/screens/riders/emergency/voice_assistant_screen.dart';
+import 'package:impactsense/screens/patrols/auth/patrol_registration_screen.dart';
+import 'package:impactsense/screens/patrols/home/patrol_accident_map_screen.dart';
+import 'package:impactsense/screens/patrols/home/patrol_home_screen.dart';
+import 'package:impactsense/screens/patrols/settings/patrol_terms_screen.dart';
+import 'package:impactsense/screens/patrols/settings/patrol_privacy_screen.dart';
 import 'package:impactsense/screens/onboarding/on_boarding_screen.dart';
 import 'package:impactsense/screens/splash/splash_screen.dart';
 
@@ -36,6 +41,11 @@ class MainApp extends StatelessWidget {
         '/personal-info': (_) => const PersonalInformationScreen(),
         '/device-synced': (_) => const DeviceSyncedScreen(),
         '/home': (_) => const HomeScreen(),
+        '/patrol-home': (_) => const PatrolHomeScreen(),
+        '/patrol-accident-map': (_) => const PatrolAccidentMapScreen(),
+        '/patrol-terms': (_) => const PatrolTermsScreen(),
+        '/patrol-privacy': (_) => const PatrolPrivacyScreen(),
+        '/patrol-register': (_) => const PatrolRegistrationScreen(),
         '/accident': (_) => const AccidentDetectedScreen(),
         '/emergency-sent': (_) => const EmergencyAlertSentScreen(),
         '/voice-assistant': (_) => const VoiceAssistantScreen(),

@@ -3,14 +3,15 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:impactsense/widgets/app_input_field.dart';
 import 'package:impactsense/widgets/role_toggle.dart';
 
-class RegistrationScreen extends StatefulWidget {
-  const RegistrationScreen({super.key});
+class PatrolRegistrationScreen extends StatefulWidget {
+  const PatrolRegistrationScreen({super.key});
 
   @override
-  State<RegistrationScreen> createState() => _RegistrationScreenState();
+  State<PatrolRegistrationScreen> createState() =>
+      _PatrolRegistrationScreenState();
 }
 
-class _RegistrationScreenState extends State<RegistrationScreen> {
+class _PatrolRegistrationScreenState extends State<PatrolRegistrationScreen> {
   static const _primaryColor = Color(0xFF1A6B78);
 
   bool _passwordVisible = false;
@@ -31,8 +32,8 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
               Center(
                 child: Image.asset(
                   'assets/logo/logo.png',
-                  height: 110,
-                  width: 110,
+                  height: 90,
+                  width: 90,
                 ),
               ),
 
@@ -62,21 +63,43 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
 
               const SizedBox(height: 20),
 
+              // Role toggle — Patrols selected; tapping Riders goes to rider registration
               RoleToggle(
-                selectedIndex: 0,
+                selectedIndex: 1,
                 onChanged: (i) {
-                  if (i == 1) {
-                    Navigator.pushReplacementNamed(
-                        context, '/patrol-register');
+                  if (i == 0) {
+                    Navigator.pushReplacementNamed(context, '/register');
                   }
                 },
               ),
 
               const SizedBox(height: 24),
 
+              // Name row
+              Row(
+                children: [
+                  Expanded(
+                    child: AppInputField(
+                      hint: 'First Name',
+                      prefixIcon: FontAwesomeIcons.userGroup,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: AppInputField(
+                      hint: 'Last Name',
+                      prefixIcon: FontAwesomeIcons.userGroup,
+                    ),
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: 12),
+
               AppInputField(
                 hint: 'Email Address',
                 prefixIcon: FontAwesomeIcons.envelope,
+                keyboardType: TextInputType.emailAddress,
               ),
 
               const SizedBox(height: 12),

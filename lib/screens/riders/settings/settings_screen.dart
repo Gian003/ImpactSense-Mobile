@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
-import 'package:impactsense/screens/settings/emergency_contacts_screen.dart';
-import 'package:impactsense/screens/settings/privacy_policy_screen.dart';
-import 'package:impactsense/screens/settings/terms_screen.dart';
+import 'package:impactsense/screens/riders/settings/emergency_contacts_screen.dart';
+import 'package:impactsense/screens/riders/settings/privacy_policy_screen.dart';
+import 'package:impactsense/screens/riders/settings/terms_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key, this.onBack});
@@ -216,7 +216,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             ),
                           ),
                           GestureDetector(
-                            onTap: () {},
+                            onTap: () => ScaffoldMessenger.of(context)
+                                .showSnackBar(const SnackBar(
+                              content: Text('Edit profile coming soon.',
+                                  style: TextStyle(fontFamily: 'Montserrat')),
+                              duration: Duration(seconds: 2),
+                            )),
                             child: Container(
                               padding: const EdgeInsets.all(8),
                               decoration: BoxDecoration(
@@ -270,7 +275,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
                     // Edit Profile button
                     GestureDetector(
-                      onTap: () {},
+                      onTap: () => ScaffoldMessenger.of(context)
+                          .showSnackBar(const SnackBar(
+                        content: Text('Edit profile coming soon.',
+                            style: TextStyle(fontFamily: 'Montserrat')),
+                        duration: Duration(seconds: 2),
+                      )),
                       child: Container(
                         width: double.infinity,
                         padding:

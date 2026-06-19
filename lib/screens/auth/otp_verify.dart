@@ -127,7 +127,13 @@ class _OtpVerifyScreenState extends State<OtpVerifyScreen> {
                     ),
                   ),
                   GestureDetector(
-                    onTap: () {},
+                    onTap: () => ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('OTP resent.',
+                            style: TextStyle(fontFamily: 'Montserrat')),
+                        duration: Duration(seconds: 2),
+                      ),
+                    ),
                     child: const Text(
                       'Resend',
                       style: TextStyle(

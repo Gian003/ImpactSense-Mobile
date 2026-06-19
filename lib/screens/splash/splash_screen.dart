@@ -11,27 +11,17 @@ class SplashScreenWrapper extends StatefulWidget {
 class SplashScreenWrapperState extends State<SplashScreenWrapper> {
   bool _hasError = false;
   String _errorMessage = '';
-  bool _isInitialized = false;
 
   Future<void> _initializeApp() async {
     try {
       await Future.delayed(const Duration(seconds: 5));
-
-      if (mounted) {
-        setState(() {
-          _isInitialized = true;
-        });
-        Navigator.pushReplacementNamed(context, '/onboarding');
-      }
+      if (mounted) Navigator.pushReplacementNamed(context, '/onboarding');
     } catch (error) {
-      if (kDebugMode) {
-        print('Initialization error: $error');
-      }
+      if (kDebugMode) print('Initialization error: $error');
       if (mounted) {
         setState(() {
           _hasError = true;
           _errorMessage = 'Initialization failed: ${error.toString()}';
-          _isInitialized = true;
         });
       }
     }
@@ -60,10 +50,6 @@ class SplashScreenWrapperState extends State<SplashScreenWrapper> {
 
   @override
   Widget build(BuildContext context) {
-    if (_isInitialized && !_hasError) {
-      return Container();
-    }
-
     return SplashScreen(
       hasError: _hasError,
       errorMessage: _errorMessage,
