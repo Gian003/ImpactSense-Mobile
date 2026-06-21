@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:impactsense/core/models/patrol_incident.dart';
+import 'package:impactsense/core/services/api_client.dart';
+import 'package:impactsense/core/services/session_service.dart';
 
 class PatrolAccidentMapScreen extends StatefulWidget {
   const PatrolAccidentMapScreen({super.key});
@@ -18,8 +20,9 @@ class _PatrolAccidentMapScreenState extends State<PatrolAccidentMapScreen> {
 
   int _tab = 1; // map tab active
 
-  bool _isOnMyWay = false;
+  bool _isOnMyWay  = false;
   bool _hasArrived = false;
+  bool _updatingStatus = false;
 
   late PatrolIncident _incident;
   bool _incidentLoaded = false;
@@ -31,6 +34,42 @@ class _PatrolAccidentMapScreenState extends State<PatrolAccidentMapScreen> {
     _mapController?.dispose();
     super.dispose();
   }
+
+  Future<void> _updateStatus(String status) async {
+    if (_incident.id == null) {
+      // No real incident ID — update local state only (demo/fallback data)
+      setState(() {
+        if (status == 'dispatched') _isOnMyWay  = true;
+        if (status == 'resolved')   _hasArrived = true;
+      });
+      return;
+    }
+
+    setState(() => _updatingStatus = true);
+    try {
+      final token = await SessionService.getToken();
+      if (token != null) {
+        await ApiClient.patch(
+          'patrol/incidents/${_incident.id}/status',
+          {'status': status},
+          token: token,
+        );
+      }
+    } catch (_) {
+      // Non-fatal — update local state regardless
+    } finally {
+      if (mounted) {
+        setState(() {
+          _updatingStatus = false;
+          if (status == 'dispatched') _isOnMyWay  = true;
+          if (status == 'resolved')   _hasArrived = true;
+        });
+      }
+    }
+  }
+
+  void _onImOnMyWay()   => _updateStatus('dispatched');
+  void _onMarkArrived() => _updateStatus('resolved');
 
   @override
   void didChangeDependencies() {
@@ -111,8 +150,8 @@ class _PatrolAccidentMapScreenState extends State<PatrolAccidentMapScreen> {
                     CameraUpdate.newLatLngZoom(
                         _incident.incidentCoordinates, 14),
                   ),
-                  onImOnMyWay: () => setState(() => _isOnMyWay = true),
-                  onMarkArrived: () => setState(() => _hasArrived = true),
+                  onImOnMyWay:   _updatingStatus ? null : _onImOnMyWay,
+                  onMarkArrived: _updatingStatus ? null : _onMarkArrived,
                 ),
               ),
 
@@ -264,17 +303,17 @@ class _BottomCards extends StatelessWidget {
     required this.primaryColor,
     required this.isOnMyWay,
     required this.onViewMap,
-    required this.onImOnMyWay,
-    required this.onMarkArrived,
+    this.onImOnMyWay,
+    this.onMarkArrived,
   });
 
   final PatrolIncident incident;
   final Color cardBg;
   final Color primaryColor;
   final bool isOnMyWay;
-  final VoidCallback onViewMap;
-  final VoidCallback onImOnMyWay;
-  final VoidCallback onMarkArrived;
+  final VoidCallback  onViewMap;
+  final VoidCallback? onImOnMyWay;
+  final VoidCallback? onMarkArrived;
 
   @override
   Widget build(BuildContext context) {

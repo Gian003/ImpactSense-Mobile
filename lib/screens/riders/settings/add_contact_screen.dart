@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
-import 'package:impactsense/core/services/psgc_service.dart';
+import 'package:impactsense/core/services/api_client.dart';
+import 'package:impactsense/core/services/session_service.dart';
 import 'package:impactsense/widgets/app_input_field.dart';
-import 'package:impactsense/widgets/psgc_location_widgets.dart';
 
 class AddContactScreen extends StatefulWidget {
   const AddContactScreen({super.key});
@@ -14,80 +14,66 @@ class AddContactScreen extends StatefulWidget {
 class _AddContactScreenState extends State<AddContactScreen> {
   static const _primaryColor = Color(0xFF1A6B78);
 
-  // PSGC state
-  List<PsgcLocation> _provinces = [];
-  List<PsgcLocation> _municipalities = [];
-  List<PsgcLocation> _barangays = [];
+  bool _saving = false;
 
-  PsgcLocation? _selectedProvince;
-  PsgcLocation? _selectedMunicipality;
-  PsgcLocation? _selectedBarangay;
-
-  bool _loadingProvinces = true;
-  bool _loadingMunicipalities = false;
-  bool _loadingBarangays = false;
+  final _nameCtrl         = TextEditingController();
+  final _phoneCtrl        = TextEditingController();
+  final _relationshipCtrl = TextEditingController();
 
   @override
-  void initState() {
-    super.initState();
-    _loadProvinces();
+  void dispose() {
+    _nameCtrl.dispose();
+    _phoneCtrl.dispose();
+    _relationshipCtrl.dispose();
+    super.dispose();
   }
 
-  Future<void> _loadProvinces() async {
-    try {
-      final provinces = await PsgcService.fetchProvinces();
-      if (mounted) {
-        setState(() {
-          _provinces = provinces;
-          _loadingProvinces = false;
-        });
-      }
-    } catch (_) {
-      if (mounted) setState(() => _loadingProvinces = false);
+  Future<void> _save() async {
+    final name  = _nameCtrl.text.trim();
+    final phone = _phoneCtrl.text.trim();
+
+    if (name.isEmpty || phone.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('Name and phone number are required.',
+            style: TextStyle(fontFamily: 'Montserrat')),
+      ));
+      return;
     }
-  }
 
-  Future<void> _onProvinceChanged(PsgcLocation? province) async {
-    setState(() {
-      _selectedProvince = province;
-      _selectedMunicipality = null;
-      _selectedBarangay = null;
-      _municipalities = [];
-      _barangays = [];
-      _loadingMunicipalities = province != null;
-    });
-    if (province == null) return;
-    try {
-      final list = await PsgcService.fetchMunicipalities(province.code);
-      if (mounted) {
-        setState(() {
-          _municipalities = list;
-          _loadingMunicipalities = false;
-        });
-      }
-    } catch (_) {
-      if (mounted) setState(() => _loadingMunicipalities = false);
-    }
-  }
+    setState(() => _saving = true);
 
-  Future<void> _onMunicipalityChanged(PsgcLocation? municipality) async {
-    setState(() {
-      _selectedMunicipality = municipality;
-      _selectedBarangay = null;
-      _barangays = [];
-      _loadingBarangays = municipality != null;
-    });
-    if (municipality == null) return;
     try {
-      final list = await PsgcService.fetchBarangays(municipality.code);
-      if (mounted) {
-        setState(() {
-          _barangays = list;
-          _loadingBarangays = false;
-        });
+      final token = await SessionService.getToken();
+      if (token == null) return;
+
+      final res = await ApiClient.post('rider/emergency-contacts', {
+        'name'         : name,
+        'phone_number' : phone,
+        if (_relationshipCtrl.text.trim().isNotEmpty)
+          'relationship' : _relationshipCtrl.text.trim(),
+      }, token: token);
+
+      if (!mounted) return;
+
+      if (res['success'] == true) {
+        Navigator.pop(context); // return to contacts list (which will refresh)
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(res['message'] ?? 'Failed to save.',
+              style: const TextStyle(fontFamily: 'Montserrat')),
+          backgroundColor: Colors.red[700],
+        ));
       }
-    } catch (_) {
-      if (mounted) setState(() => _loadingBarangays = false);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('Connection error.',
+              style: TextStyle(fontFamily: 'Montserrat')),
+          backgroundColor: Colors.red,
+        ));
+      }
+    } finally {
+      if (mounted) setState(() => _saving = false);
     }
   }
 
@@ -98,7 +84,7 @@ class _AddContactScreenState extends State<AddContactScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            // Back button row
+            // Back button
             Align(
               alignment: Alignment.centerLeft,
               child: Padding(
@@ -126,178 +112,83 @@ class _AddContactScreenState extends State<AddContactScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Logo
-                    Center(
-                      child: Image.asset(
-                        'assets/logo/logo.png',
-                        height: 90,
-                        width: 90,
+                    Center(child: Image.asset('assets/logo/logo.png',
+                        height: 90, width: 90)),
+
+                    const SizedBox(height: 12),
+
+                    const Center(
+                      child: Text(
+                        'Add Emergency Contact',
+                        style: TextStyle(
+                          fontFamily: 'Montserrat', fontSize: 20,
+                          fontWeight: FontWeight.bold, color: Colors.black87,
+                        ),
                       ),
+                    ),
+
+                    const SizedBox(height: 6),
+
+                    const Center(
+                      child: Text(
+                        'This person will be alerted if an accident is detected.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontFamily: 'Montserrat', fontSize: 12,
+                          color: Colors.black54,
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 28),
+
+                    AppInputField(
+                      hint: 'Full Name',
+                      controller: _nameCtrl,
+                      prefixIcon: FontAwesomeIcons.userGroup,
                     ),
 
                     const SizedBox(height: 12),
 
-                    // Subtitle
-                    const Center(
-                      child: Text(
-                        'Fill in your rider details to stay safe and connected',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontFamily: 'Montserrat',
-                          fontSize: 13,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.black87,
-                        ),
-                      ),
-                    ),
-
-                    const SizedBox(height: 20),
-
-                    // Name
-                    const SectionLabel(
-                        icon: FontAwesomeIcons.userGroup, label: 'Name'),
-                    const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        Expanded(child: AppInputField(compact: true,hint: 'First Name')),
-                        const SizedBox(width: 10),
-                        Expanded(child: AppInputField(compact: true,hint: 'Middle Name')),
-                      ],
-                    ),
-                    const SizedBox(height: 10),
-                    Row(
-                      children: [
-                        Expanded(child: AppInputField(compact: true,hint: 'Last Name')),
-                        const SizedBox(width: 10),
-                        Expanded(child: AppInputField(compact: true,hint: 'Suffix')),
-                      ],
-                    ),
-
-                    const SizedBox(height: 16),
-
-                    // Contacts
-                    const SectionLabel(
-                        icon: FontAwesomeIcons.phone, label: 'Contacts'),
-                    const SizedBox(height: 8),
-                    AppInputField(compact: true,
-                      hint: 'Contact Number',
-                      prefixIcon: FontAwesomeIcons.phone,
-                      keyboardType: TextInputType.phone,
-                    ),
-                    const SizedBox(height: 10),
-                    AppInputField(compact: true,
-                      hint: 'Emergency Contact Person',
-                      prefixIcon: FontAwesomeIcons.userGroup,
-                    ),
-                    const SizedBox(height: 10),
-                    AppInputField(compact: true,
-                      hint: 'Emergency Contact Number',
+                    AppInputField(
+                      hint: 'Phone Number',
+                      controller: _phoneCtrl,
                       prefixIcon: FontAwesomeIcons.phone,
                       keyboardType: TextInputType.phone,
                     ),
 
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 12),
 
-                    // Address
-                    const SectionLabel(
-                        icon: FontAwesomeIcons.locationDot,
-                        label: 'Address'),
-                    const SizedBox(height: 8),
-
-                    // Province
-                    _loadingProvinces
-                        ? LoadingField(label: 'Loading provinces...')
-                        : LocationDropdown<PsgcLocation>(
-                            hint: 'Select Province',
-                            value: _selectedProvince,
-                            items: _provinces,
-                            itemLabel: (p) => p.name,
-                            onChanged: _onProvinceChanged,
-                          ),
-
-                    const SizedBox(height: 10),
-
-                    // Municipality
-                    _loadingMunicipalities
-                        ? LoadingField(label: 'Loading municipalities...')
-                        : LocationDropdown<PsgcLocation>(
-                            hint: 'Select Town/Municipality',
-                            value: _selectedMunicipality,
-                            items: _municipalities,
-                            itemLabel: (m) => m.name,
-                            onChanged: _selectedProvince != null
-                                ? _onMunicipalityChanged
-                                : null,
-                            disabled: _selectedProvince == null,
-                          ),
-
-                    const SizedBox(height: 10),
-
-                    // Barangay + Device ID
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _loadingBarangays
-                              ? LoadingField(label: 'Loading barangays...')
-                              : LocationDropdown<PsgcLocation>(
-                                  hint: 'Select Barangay',
-                                  value: _selectedBarangay,
-                                  items: _barangays,
-                                  itemLabel: (b) => b.name,
-                                  onChanged: _selectedMunicipality != null
-                                      ? (v) => setState(
-                                          () => _selectedBarangay = v)
-                                      : null,
-                                  disabled: _selectedMunicipality == null,
-                                ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: AppInputField(compact: true,
-                            hint: 'Device ID',
-                            prefixIcon: FontAwesomeIcons.microchip,
-                          ),
-                        ),
-                      ],
+                    AppInputField(
+                      hint: 'Relationship (e.g. Mother, Friend)',
+                      controller: _relationshipCtrl,
+                      prefixIcon: FontAwesomeIcons.heart,
                     ),
 
                     const SizedBox(height: 32),
 
-                    // Save button
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(
-                        onPressed: () => Navigator.pop(context),
+                        onPressed: _saving ? null : _save,
                         style: ElevatedButton.styleFrom(
                           foregroundColor: Colors.white,
                           backgroundColor: _primaryColor,
-                          padding:
-                              const EdgeInsets.symmetric(vertical: 16),
+                          padding: const EdgeInsets.symmetric(vertical: 16),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(30),
                           ),
                         ),
-                        child: const Text(
-                          'Save',
-                          style: TextStyle(
-                            fontFamily: 'Montserrat',
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                    ),
-
-                    const SizedBox(height: 12),
-
-                    const Center(
-                      child: Text(
-                        'Save and secure your profile.',
-                        style: TextStyle(
-                          fontFamily: 'Montserrat',
-                          fontSize: 13,
-                          color: Colors.black54,
-                        ),
+                        child: _saving
+                            ? const SizedBox(
+                                height: 20, width: 20,
+                                child: CircularProgressIndicator(
+                                    color: Colors.white, strokeWidth: 2))
+                            : const Text('Save Contact',
+                                style: TextStyle(
+                                  fontFamily: 'Montserrat', fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                )),
                       ),
                     ),
 

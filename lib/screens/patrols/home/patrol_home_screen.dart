@@ -4,6 +4,7 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:impactsense/core/models/patrol_incident.dart';
+import 'package:impactsense/core/services/api_client.dart';
 import 'package:impactsense/core/services/auth_service.dart';
 import 'package:impactsense/core/services/patrol_service.dart';
 import 'package:impactsense/core/services/realtime_service.dart';
@@ -24,14 +25,18 @@ class _PatrolHomeScreenState extends State<PatrolHomeScreen> {
   static const _navBg = Color(0xFF0D3D47);
 
   int _tab = 1; // start on map tab
-  String _patrollerName = 'Patroller';
-  Timer? _locationTimer;
-  final _realtime = RealtimeService();
+  String  _patrollerName = 'Patroller';
+  Timer?  _locationTimer;
+  final   _realtime = RealtimeService();
+
+  // Live incidents (loaded from API + updated via Pusher)
+  List<Map<String, dynamic>> _incidents = [];
 
   @override
   void initState() {
     super.initState();
     _loadName();
+    _loadIncidents();
     _startLocationUpdates();
     _connectRealtime();
   }
@@ -46,6 +51,23 @@ class _PatrolHomeScreenState extends State<PatrolHomeScreen> {
   Future<void> _loadName() async {
     final name = await SessionService.getName();
     if (mounted && name != null) setState(() => _patrollerName = name);
+  }
+
+  Future<void> _loadIncidents() async {
+    try {
+      final token = await SessionService.getToken();
+      if (token == null) return;
+      final res = await ApiClient.get('patrol/incidents', token: token);
+      if (res['success'] == true && mounted) {
+        final list = res['data'] as List<dynamic>? ?? [];
+        setState(() {
+          _incidents = list.map((e) =>
+              Map<String, dynamic>.from(e as Map)).toList();
+        });
+      }
+    } catch (_) {
+      // Keep empty list on error
+    }
   }
 
   Future<void> _connectRealtime() async {
@@ -70,6 +92,8 @@ class _PatrolHomeScreenState extends State<PatrolHomeScreen> {
 
   void _onDispatchReceived(Map<String, dynamic> data) {
     if (!mounted) return;
+    // Add to local incidents list so notification tab updates immediately
+    setState(() => _incidents.insert(0, data));
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
@@ -136,7 +160,8 @@ class _PatrolHomeScreenState extends State<PatrolHomeScreen> {
           index: _tab,
           children: [
             _NotificationsTab(
-              incident: _incident,
+              incident:    _incident,
+              incidents:   _incidents,
               primaryColor: _primaryColor,
               onViewDetails: _viewDetails,
               onBack: () => setState(() => _tab = 1),
@@ -287,15 +312,17 @@ class _PatrolHeader extends StatelessWidget {
 class _NotificationsTab extends StatelessWidget {
   const _NotificationsTab({
     required this.incident,
+    required this.incidents,
     required this.primaryColor,
     required this.onViewDetails,
     required this.onBack,
   });
 
-  final PatrolIncident incident;
-  final Color primaryColor;
-  final VoidCallback onViewDetails;
-  final VoidCallback onBack;
+  final PatrolIncident                   incident;
+  final List<Map<String, dynamic>>       incidents;
+  final Color                            primaryColor;
+  final VoidCallback                     onViewDetails;
+  final VoidCallback                     onBack;
 
   static const _cardBg = Color(0xFFCCE4EA);
   static const _cardDark = Color(0xFF163848);
@@ -351,24 +378,101 @@ class _NotificationsTab extends StatelessWidget {
 
           // ── Cards ─────────────────────────────────────────────────────────
           Expanded(
-            child: ListView(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              children: [
-                // Card 1 — Accident report
-                _AccidentReportCard(
-                  incident: incident,
-                  cardBg: _cardBg,
-                  cardDark: _cardDark,
-                  onViewDetails: onViewDetails,
-                ),
-                const SizedBox(height: 14),
-                // Card 2 — TOC shared location
-                _TocLocationCard(
-                  cardBg: _cardBg,
-                  cardDark: _cardDark,
-                  onViewDetails: onViewDetails,
-                ),
-              ],
+            child: incidents.isEmpty
+                ? ListView(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    children: [
+                      // Fallback hardcoded card when no API data yet
+                      _AccidentReportCard(
+                        incident: incident, cardBg: _cardBg,
+                        cardDark: _cardDark, onViewDetails: onViewDetails,
+                      ),
+                      const SizedBox(height: 14),
+                      _TocLocationCard(
+                        cardBg: _cardBg, cardDark: _cardDark,
+                        onViewDetails: onViewDetails,
+                      ),
+                    ],
+                  )
+                : ListView.separated(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    itemCount: incidents.length,
+                    separatorBuilder: (_, __) => const SizedBox(height: 14),
+                    itemBuilder: (_, i) {
+                      final inc = incidents[i];
+                      return _ApiAccidentCard(
+                        data: inc, cardBg: _cardBg, cardDark: _cardDark,
+                        onViewDetails: onViewDetails,
+                      );
+                    },
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── API incident card (real DB data) ─────────────────────────────────────────
+
+class _ApiAccidentCard extends StatelessWidget {
+  const _ApiAccidentCard({
+    required this.data,
+    required this.cardBg,
+    required this.cardDark,
+    required this.onViewDetails,
+  });
+
+  final Map<String, dynamic> data;
+  final Color                cardBg;
+  final Color                cardDark;
+  final VoidCallback         onViewDetails;
+
+  @override
+  Widget build(BuildContext context) {
+    final type    = (data['type']    as String? ?? 'Incident').toUpperCase();
+    final address = data['address']  as String? ?? 'Unknown location';
+    final riderName = (data['rider'] as Map?)?['full_name'] as String? ?? 'Unknown rider';
+    final status  = data['status']   as String? ?? 'pending';
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: cardBg, borderRadius: BorderRadius.circular(12)),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(children: [
+            Text('NEW ACCIDENT REPORT',
+                style: TextStyle(fontFamily: 'Montserrat', fontSize: 12,
+                    fontWeight: FontWeight.bold, color: cardDark,
+                    letterSpacing: 0.5)),
+            const Spacer(),
+            Text(status, style: TextStyle(fontFamily: 'Montserrat',
+                fontSize: 11, color: Colors.grey[600])),
+          ]),
+          const SizedBox(height: 10),
+          Text('$type — $riderName',
+              style: const TextStyle(fontFamily: 'Montserrat', fontSize: 14,
+                  fontWeight: FontWeight.bold, color: Colors.black87)),
+          const SizedBox(height: 3),
+          Text(address, style: TextStyle(fontFamily: 'Montserrat',
+              fontSize: 13, color: Colors.grey[700])),
+          const SizedBox(height: 10),
+          const Text('Please respond to incident',
+              style: TextStyle(fontFamily: 'Montserrat', fontSize: 13,
+                  fontWeight: FontWeight.bold, color: Colors.black87)),
+          const SizedBox(height: 10),
+          GestureDetector(
+            onTap: onViewDetails,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+              decoration: BoxDecoration(
+                  color: cardDark, borderRadius: BorderRadius.circular(20)),
+              child: const Text('HIGH PRIORITY',
+                  style: TextStyle(fontFamily: 'Montserrat', fontSize: 11,
+                      fontWeight: FontWeight.bold, color: Colors.white,
+                      letterSpacing: 0.5)),
             ),
           ),
         ],

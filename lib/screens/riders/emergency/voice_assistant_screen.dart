@@ -1,6 +1,9 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:impactsense/core/services/api_client.dart';
+import 'package:impactsense/core/services/session_service.dart';
 
 class VoiceAssistantScreen extends StatefulWidget {
   const VoiceAssistantScreen({super.key});
@@ -13,7 +16,8 @@ class _VoiceAssistantScreenState extends State<VoiceAssistantScreen>
     with SingleTickerProviderStateMixin {
   static const _primaryColor = Color(0xFF1A6B78);
 
-  bool _isOn = false;
+  bool _isOn      = false;
+  bool _sending   = false;
   late AnimationController _waveController;
 
   @override
@@ -40,6 +44,57 @@ class _VoiceAssistantScreenState extends State<VoiceAssistantScreen>
     setState(() => _isOn = false);
     _waveController.stop();
     _waveController.reset();
+  }
+
+  Future<void> _sendToAllContacts() async {
+    if (_sending) return;
+    setState(() => _sending = true);
+
+    double lat = 15.9754, lng = 120.5697;
+    String locationLabel = 'Urdaneta City, Pangasinan';
+    int contactCount = 0;
+
+    try {
+      final perm = await Geolocator.checkPermission();
+      if (perm != LocationPermission.denied &&
+          perm != LocationPermission.deniedForever) {
+        final pos = await Geolocator.getCurrentPosition(
+          locationSettings: const LocationSettings(
+              accuracy: LocationAccuracy.high));
+        lat = pos.latitude;
+        lng = pos.longitude;
+        locationLabel =
+            '${pos.latitude.toStringAsFixed(4)}° N, ${pos.longitude.toStringAsFixed(4)}° E';
+      }
+    } catch (_) {}
+
+    try {
+      final token = await SessionService.getToken();
+      if (token != null) {
+        final res = await ApiClient.post('rider/incidents', {
+          'type'     : 'voice_alert',
+          'latitude' : lat,
+          'longitude': lng,
+          'severity' : 'high',
+        }, token: token);
+
+        if (res['success'] == true) {
+          final contacts = await ApiClient.get(
+              'rider/emergency-contacts', token: token);
+          if (contacts['success'] == true) {
+            contactCount = ((contacts['data'] as List?) ?? []).length;
+          }
+        }
+      }
+    } catch (_) {}
+
+    if (!mounted) return;
+    setState(() => _sending = false);
+
+    Navigator.pushReplacementNamed(context, '/emergency-sent', arguments: {
+      'location'    : locationLabel,
+      'contactCount': contactCount,
+    });
   }
 
   @override
@@ -158,8 +213,7 @@ class _VoiceAssistantScreenState extends State<VoiceAssistantScreen>
               child: SizedBox(
                 width: double.infinity,
                 child: ElevatedButton.icon(
-                  onPressed: () =>
-                      Navigator.pushReplacementNamed(context, '/accident'),
+                  onPressed: _sending ? null : _sendToAllContacts,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.red[700],
                     foregroundColor: Colors.white,

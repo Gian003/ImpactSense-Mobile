@@ -6,6 +6,11 @@ class EmergencyAlertSentScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final args = ModalRoute.of(context)?.settings.arguments;
+    final location     = (args is Map ? args['location']     as String? : null)
+                         ?? 'Urdaneta City, Pangasinan';
+    final contactCount = (args is Map ? args['contactCount'] as int?    : null)
+                         ?? 0;
     return Scaffold(
       backgroundColor: const Color(0xFFF0F0F0),
       body: SafeArea(
@@ -118,13 +123,15 @@ class EmergencyAlertSentScreen extends StatelessWidget {
                     _InfoCard(
                       icon: FontAwesomeIcons.locationDot,
                       title: 'Location Sent',
-                      subtitle: 'Urdaneta City, Pangasinan',
+                      subtitle: location,
                     ),
                     const SizedBox(height: 12),
                     _InfoCard(
                       icon: FontAwesomeIcons.userGroup,
                       title: 'Contacts Notified',
-                      subtitle: '3 Contacts',
+                      subtitle: contactCount > 0
+                          ? '$contactCount Contact${contactCount == 1 ? '' : 's'}'
+                          : 'Emergency services',
                     ),
                   ],
                 ),

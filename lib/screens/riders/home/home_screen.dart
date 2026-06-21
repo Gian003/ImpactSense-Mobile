@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:impactsense/core/services/session_service.dart';
 import 'package:impactsense/screens/riders/map/live_navigation_screen.dart';
 import 'package:impactsense/screens/riders/settings/settings_screen.dart';
@@ -12,20 +14,55 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  static const _primaryColor = Color(0xFF1A6B78);
-  int _currentNavIndex = 0;
-  String _firstName = '';
+  static const _primaryColor   = Color(0xFF1A6B78);
+  static const _defaultLatLng  = LatLng(15.9754, 120.5697); // Urdaneta City
+
+  int    _currentNavIndex = 0;
+  String _firstName       = '';
+
+  GoogleMapController? _mapController;
+  LatLng?              _deviceLatLng;
 
   @override
   void initState() {
     super.initState();
     _loadName();
+    _initLocation();
+  }
+
+  @override
+  void dispose() {
+    _mapController?.dispose();
+    super.dispose();
   }
 
   Future<void> _loadName() async {
     final name = await SessionService.getName();
     if (mounted && name != null) {
       setState(() => _firstName = name.split(' ').first);
+    }
+  }
+
+  Future<void> _initLocation() async {
+    try {
+      var perm = await Geolocator.checkPermission();
+      if (perm == LocationPermission.denied) {
+        perm = await Geolocator.requestPermission();
+      }
+      if (perm == LocationPermission.denied ||
+          perm == LocationPermission.deniedForever) { return; }
+
+      final pos = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(
+            accuracy: LocationAccuracy.high),
+      );
+      if (!mounted) return;
+      final latLng = LatLng(pos.latitude, pos.longitude);
+      setState(() => _deviceLatLng = latLng);
+      _mapController?.animateCamera(
+          CameraUpdate.newLatLngZoom(latLng, 15));
+    } catch (_) {
+      // Location unavailable — map shows default centre
     }
   }
 
@@ -215,29 +252,38 @@ class _HomeScreenState extends State<HomeScreen> {
 
                     const SizedBox(height: 8),
 
-                    // Map placeholder
+                    // GPS Map
                     ClipRRect(
                       borderRadius: BorderRadius.circular(8),
-                      child: Container(
+                      child: SizedBox(
                         height: 160,
-                        color: Colors.grey[300],
-                        child: Center(
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              FaIcon(FontAwesomeIcons.map,
-                                  size: 36, color: Colors.grey[500]),
-                              const SizedBox(height: 6),
-                              Text(
-                                'Map goes here',
-                                style: TextStyle(
-                                  fontFamily: 'Montserrat',
-                                  fontSize: 12,
-                                  color: Colors.grey[600],
-                                ),
-                              ),
-                            ],
+                        child: GoogleMap(
+                          initialCameraPosition: CameraPosition(
+                            target: _deviceLatLng ?? _defaultLatLng,
+                            zoom: 14,
                           ),
+                          onMapCreated: (c) {
+                            _mapController = c;
+                            if (_deviceLatLng != null) {
+                              c.animateCamera(CameraUpdate
+                                  .newLatLngZoom(_deviceLatLng!, 15));
+                            }
+                          },
+                          markers: _deviceLatLng != null
+                              ? {
+                                  Marker(
+                                    markerId: const MarkerId('device'),
+                                    position: _deviceLatLng!,
+                                    icon: BitmapDescriptor
+                                        .defaultMarkerWithHue(
+                                            BitmapDescriptor.hueRed),
+                                  ),
+                                }
+                              : {},
+                          myLocationEnabled:    true,
+                          myLocationButtonEnabled: false,
+                          zoomControlsEnabled:  false,
+                          mapToolbarEnabled:    false,
                         ),
                       ),
                     ),

@@ -3,8 +3,9 @@ import 'package:flutter/foundation.dart';
 import 'package:pusher_channels_flutter/pusher_channels_flutter.dart';
 
 // Callback types
-typedef IncidentHandler = void Function(Map<String, dynamic> incident);
-typedef DispatchHandler = void Function(Map<String, dynamic> dispatch);
+typedef IncidentHandler       = void Function(Map<String, dynamic> incident);
+typedef IncidentUpdateHandler = void Function(Map<String, dynamic> update);
+typedef DispatchHandler       = void Function(Map<String, dynamic> dispatch);
 
 class RealtimeService {
   // ── Replace with your Pusher credentials ─────────────────────────────────
@@ -41,14 +42,22 @@ class RealtimeService {
     _connected = false;
   }
 
-  // TOC dashboard — subscribe to the public incidents channel
-  Future<void> listenForIncidents(IncidentHandler onIncident) async {
+  // TOC dashboard — subscribe to the public incidents channel.
+  // Handles both incident.reported and incident.status_updated events.
+  Future<void> listenForIncidents(
+    IncidentHandler onIncident, {
+    IncidentUpdateHandler? onStatusUpdate,
+  }) async {
     await _pusher.subscribe(
       channelName: 'incidents',
       onEvent: (event) {
+        final data = _decode(event.data);
+        if (data == null) return;
+
         if (event.eventName == 'incident.reported') {
-          final data = _decode(event.data);
-          if (data != null) onIncident(data);
+          onIncident(data);
+        } else if (event.eventName == 'incident.status_updated') {
+          onStatusUpdate?.call(data);
         }
       },
     );

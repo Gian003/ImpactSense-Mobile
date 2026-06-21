@@ -1,13 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:impactsense/core/services/api_client.dart';
+import 'package:impactsense/core/services/session_service.dart';
 import 'package:impactsense/screens/riders/settings/add_contact_screen.dart';
-
-class EmergencyContact {
-  final String name;
-  final String type;
-
-  const EmergencyContact({required this.name, required this.type});
-}
 
 class EmergencyContactsScreen extends StatefulWidget {
   const EmergencyContactsScreen({super.key});
@@ -20,10 +15,42 @@ class EmergencyContactsScreen extends StatefulWidget {
 class _EmergencyContactsScreenState extends State<EmergencyContactsScreen> {
   static const _primaryColor = Color(0xFF1A6B78);
 
-  final List<EmergencyContact> _contacts = const [
-    EmergencyContact(name: 'PNP (911)', type: 'Primary contact'),
-    EmergencyContact(name: 'PAPA', type: 'Secondary contact'),
-  ];
+  List<Map<String, dynamic>> _contacts = [];
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadContacts();
+  }
+
+  Future<void> _loadContacts() async {
+    setState(() => _loading = true);
+    try {
+      final token = await SessionService.getToken();
+      if (token == null) return;
+      final res = await ApiClient.get('rider/emergency-contacts', token: token);
+      if (res['success'] == true && mounted) {
+        final data = res['data'] as List<dynamic>? ?? [];
+        setState(() {
+          _contacts = data.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+        });
+      }
+    } catch (_) {
+      // Keep list empty on error
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _delete(int id) async {
+    try {
+      final token = await SessionService.getToken();
+      if (token == null) return;
+      await ApiClient.delete('rider/emergency-contacts/$id', token: token);
+      await _loadContacts();
+    } catch (_) {}
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -51,26 +78,17 @@ class _EmergencyContactsScreenState extends State<EmergencyContactsScreen> {
               ),
             ),
 
-            // Logo
-            Center(
-              child: Image.asset(
-                'assets/logo/logo.png',
-                height: 90,
-                width: 90,
-              ),
-            ),
+            Center(child: Image.asset('assets/logo/logo.png',
+                height: 90, width: 90)),
 
             const SizedBox(height: 16),
 
-            // Title
             const Center(
               child: Text(
                 'Emergency Contacts',
                 style: TextStyle(
-                  fontFamily: 'Montserrat',
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black87,
+                  fontFamily: 'Montserrat', fontSize: 22,
+                  fontWeight: FontWeight.bold, color: Colors.black87,
                 ),
               ),
             ),
@@ -79,27 +97,42 @@ class _EmergencyContactsScreenState extends State<EmergencyContactsScreen> {
 
             // Contact list
             Expanded(
-              child: ListView.separated(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                itemCount: _contacts.length,
-                separatorBuilder: (_, __) => const SizedBox(height: 10),
-                itemBuilder: (_, i) => _ContactCard(
-                  contact: _contacts[i],
-                  primaryColor: _primaryColor,
-                ),
-              ),
+              child: _loading
+                  ? const Center(child: CircularProgressIndicator())
+                  : _contacts.isEmpty
+                      ? const Center(
+                          child: Text(
+                            'No emergency contacts yet.\nTap "Add contacts" below.',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontFamily: 'Montserrat',
+                              fontSize: 13, color: Colors.black45,
+                            ),
+                          ),
+                        )
+                      : ListView.separated(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          itemCount: _contacts.length,
+                          separatorBuilder: (_, __) => const SizedBox(height: 10),
+                          itemBuilder: (_, i) => _ContactCard(
+                            contact: _contacts[i],
+                            primaryColor: _primaryColor,
+                            onDelete: () => _delete(
+                                _contacts[i]['id'] as int),
+                          ),
+                        ),
             ),
 
             // Add contacts button
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
               child: GestureDetector(
-                onTap: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => const AddContactScreen(),
-                  ),
-                ),
+                onTap: () async {
+                  await Navigator.push(context,
+                      MaterialPageRoute(
+                          builder: (_) => const AddContactScreen()));
+                  _loadContacts(); // refresh after returning
+                },
                 child: Container(
                   width: double.infinity,
                   padding: const EdgeInsets.symmetric(vertical: 16),
@@ -115,15 +148,11 @@ class _EmergencyContactsScreenState extends State<EmergencyContactsScreen> {
                       FaIcon(FontAwesomeIcons.circlePlus,
                           color: Colors.black87, size: 20),
                       SizedBox(width: 10),
-                      Text(
-                        'Add contacts',
-                        style: TextStyle(
-                          fontFamily: 'Montserrat',
-                          fontSize: 15,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.black87,
-                        ),
-                      ),
+                      Text('Add contacts',
+                          style: TextStyle(
+                            fontFamily: 'Montserrat', fontSize: 15,
+                            fontWeight: FontWeight.w600, color: Colors.black87,
+                          )),
                     ],
                   ),
                 ),
@@ -140,10 +169,12 @@ class _ContactCard extends StatelessWidget {
   const _ContactCard({
     required this.contact,
     required this.primaryColor,
+    required this.onDelete,
   });
 
-  final EmergencyContact contact;
+  final Map<String, dynamic> contact;
   final Color primaryColor;
+  final VoidCallback onDelete;
 
   @override
   Widget build(BuildContext context) {
@@ -156,31 +187,33 @@ class _ContactCard extends StatelessWidget {
       ),
       child: Row(
         children: [
-          const FaIcon(FontAwesomeIcons.phone,
-              color: Colors.green, size: 20),
+          const FaIcon(FontAwesomeIcons.phone, color: Colors.green, size: 20),
           const SizedBox(width: 14),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                contact.name,
-                style: const TextStyle(
-                  fontFamily: 'Montserrat',
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black87,
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  contact['name'] as String? ?? '',
+                  style: const TextStyle(
+                    fontFamily: 'Montserrat', fontSize: 14,
+                    fontWeight: FontWeight.bold, color: Colors.black87,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                '(${contact.type})',
-                style: const TextStyle(
-                  fontFamily: 'Montserrat',
-                  fontSize: 12,
-                  color: Colors.black54,
+                const SizedBox(height: 2),
+                Text(
+                  '${contact['phone_number'] ?? ''}${contact['relationship'] != null ? '  ·  ${contact['relationship']}' : ''}',
+                  style: const TextStyle(
+                    fontFamily: 'Montserrat', fontSize: 12, color: Colors.black54,
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
+          ),
+          GestureDetector(
+            onTap: onDelete,
+            child: const FaIcon(FontAwesomeIcons.trashCan,
+                color: Colors.red, size: 16),
           ),
         ],
       ),

@@ -152,8 +152,12 @@ class _OtpVerifyScreenState extends State<OtpVerifyScreen> {
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
-                  onPressed: () =>
-                      Navigator.pushNamed(context, '/personal-info'),
+                  onPressed: () {
+                    // Pass registration credentials through to Personal Info
+                    final args = ModalRoute.of(context)?.settings.arguments;
+                    Navigator.pushNamed(context, '/personal-info',
+                        arguments: args);
+                  },
                   style: ElevatedButton.styleFrom(
                     foregroundColor: Colors.white,
                     backgroundColor: _primaryColor,

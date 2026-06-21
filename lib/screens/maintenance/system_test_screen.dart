@@ -100,7 +100,7 @@ class _SystemTestScreenState extends State<SystemTestScreen> {
     _setRunning(0);
     try {
       final res = await ApiClient.get('health');
-      _setResult(0, res.isNotEmpty, 'Server responded');
+      _setResult(0, res['status'] == 'up', 'Server responded');
     } catch (e) {
       _setResult(0, false, e.toString());
     }
@@ -205,7 +205,10 @@ class _SystemTestScreenState extends State<SystemTestScreen> {
     _setRunning(5);
     try {
       await _realtime.connect().timeout(const Duration(seconds: 8));
-      await _realtime.listenForIncidents((_) {});
+      await _realtime.listenForIncidents(
+        (_) {},
+        onStatusUpdate: (_) => setState(() => _pusherEventReceived = true),
+      );
       _setResult(5, true, 'Connected to Pusher "incidents" channel');
     } catch (e) {
       _setResult(5, false, 'Pusher: $e — check PUSHER_APP_KEY in .env');
