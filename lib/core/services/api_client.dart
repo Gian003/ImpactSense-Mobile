@@ -44,4 +44,20 @@ class ApiClient {
 
     return jsonDecode(response.body) as Map<String, dynamic>;
   }
+
+  static Future<Map<String, dynamic>> patch(
+    String endpoint,
+    Map<String, dynamic> body, {
+    String? token,
+  }) async {
+    final response = await http
+        .patch(
+          Uri.parse('$baseUrl/$endpoint'),
+          headers: _headers(token: token),
+          body: jsonEncode(body),
+        )
+        .timeout(_timeout);
+
+    return jsonDecode(response.body) as Map<String, dynamic>;
+  }
 }

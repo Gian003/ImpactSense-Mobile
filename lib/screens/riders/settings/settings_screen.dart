@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:impactsense/core/services/auth_service.dart';
+import 'package:impactsense/screens/maintenance/system_test_screen.dart';
 import 'package:impactsense/screens/riders/settings/emergency_contacts_screen.dart';
 import 'package:impactsense/screens/riders/settings/privacy_policy_screen.dart';
 import 'package:impactsense/screens/riders/settings/terms_screen.dart';
@@ -382,6 +383,29 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           ),
                         ],
                       ),
+                    ),
+
+                    const SizedBox(height: 16),
+
+                    // Developer / Maintenance
+                    const _SectionLabel(text: 'Maintenance'),
+                    const SizedBox(height: 8),
+                    _OutlineCard(
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const SystemTestScreen()),
+                      ),
+                      child: Row(children: [
+                        FaIcon(FontAwesomeIcons.flask, color: const Color(0xFF1A6B78), size: 18),
+                        const SizedBox(width: 14),
+                        const Expanded(
+                          child: Text('System Test', style: TextStyle(
+                            fontFamily: 'Montserrat', fontSize: 14,
+                            fontWeight: FontWeight.bold, color: Colors.black87,
+                          )),
+                        ),
+                        const Icon(Icons.chevron_right, color: Colors.black45),
+                      ]),
                     ),
 
                     const SizedBox(height: 16),

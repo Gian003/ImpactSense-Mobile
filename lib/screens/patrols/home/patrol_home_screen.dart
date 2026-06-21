@@ -8,6 +8,7 @@ import 'package:impactsense/core/services/auth_service.dart';
 import 'package:impactsense/core/services/patrol_service.dart';
 import 'package:impactsense/core/services/realtime_service.dart';
 import 'package:impactsense/core/services/session_service.dart';
+import 'package:impactsense/screens/maintenance/system_test_screen.dart';
 
 // ── Root screen ───────────────────────────────────────────────────────────────
 
@@ -940,6 +941,20 @@ class _PatrolSettingsTabState extends State<_PatrolSettingsTab> {
                     onChanged: (v) =>
                         setState(() => _locationAccess = v),
                     primaryColor: widget.primaryColor,
+                  ),
+                ),
+
+                const SizedBox(height: 18),
+
+                // Maintenance
+                const _SectionLabel(label: 'Maintenance'),
+                const SizedBox(height: 8),
+                _SettingsRow(
+                  label: 'System Test',
+                  trailing: const Icon(Icons.chevron_right, color: Colors.black54),
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const SystemTestScreen()),
                   ),
                 ),
 
