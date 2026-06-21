@@ -179,16 +179,15 @@ class _PatrolHeader extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Row(
         children: [
-          Container(
-            padding: const EdgeInsets.all(6),
-            decoration: const BoxDecoration(
-              color: Colors.white,
-              shape: BoxShape.circle,
-            ),
-            child: const FaIcon(
-              FontAwesomeIcons.shieldHalved,
-              color: Colors.red,
-              size: 22,
+          Image.asset(
+            'assets/logo/pnp-urdaneta.png',
+            width: 44,
+            height: 44,
+            fit: BoxFit.contain,
+            errorBuilder: (_, __, ___) => Container(
+              padding: const EdgeInsets.all(6),
+              decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
+              child: const FaIcon(FontAwesomeIcons.shieldHalved, color: Colors.red, size: 22),
             ),
           ),
           const SizedBox(width: 10),
@@ -824,14 +823,19 @@ class _PatrolSettingsTabState extends State<_PatrolSettingsTab> {
                     children: [
                       CircleAvatar(
                         radius: 28,
-                        backgroundColor: Colors.grey[300],
-                        backgroundImage: const AssetImage(
-                            'assets/pictures/profile pic.png'),
-                        onBackgroundImageError: (_, __) {},
-                        child: const FaIcon(
-                          FontAwesomeIcons.solidUser,
-                          color: Colors.white70,
-                          size: 24,
+                        backgroundColor: Colors.white,
+                        child: ClipOval(
+                          child: Image.asset(
+                            'assets/logo/pnp.png',
+                            width: 56,
+                            height: 56,
+                            fit: BoxFit.contain,
+                            errorBuilder: (_, __, ___) => const FaIcon(
+                              FontAwesomeIcons.solidUser,
+                              color: Colors.grey,
+                              size: 24,
+                            ),
+                          ),
                         ),
                       ),
                       const SizedBox(width: 14),

@@ -77,10 +77,17 @@ class _PatrolRegistrationScreenState extends State<PatrolRegistrationScreen> {
               const SizedBox(height: 10),
 
               Center(
-                child: Image.asset(
-                  'assets/logo/logo.png',
-                  height: 90,
-                  width: 90,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Image.asset('assets/logo/pnp-urdaneta.png',
+                        height: 70, width: 70, fit: BoxFit.contain,
+                        errorBuilder: (_, __, ___) => const SizedBox.shrink()),
+                    const SizedBox(width: 16),
+                    Image.asset('assets/logo/logo.png',
+                        height: 70, width: 70, fit: BoxFit.contain,
+                        errorBuilder: (_, __, ___) => const SizedBox.shrink()),
+                  ],
                 ),
               ),
 
