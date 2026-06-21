@@ -7,6 +7,7 @@ class AppInputField extends StatelessWidget {
   const AppInputField({
     super.key,
     required this.hint,
+    this.controller,
     this.prefixIcon,
     this.obscureText = false,
     this.suffixIcon,
@@ -16,6 +17,7 @@ class AppInputField extends StatelessWidget {
   });
 
   final String hint;
+  final TextEditingController? controller;
   final FaIconData? prefixIcon;
   final bool obscureText;
   final FaIconData? suffixIcon;
@@ -34,6 +36,7 @@ class AppInputField extends StatelessWidget {
     final double iconSize = compact ? 16 : 18;
 
     return TextField(
+      controller: controller,
       obscureText: obscureText,
       keyboardType: keyboardType,
       style: TextStyle(fontFamily: 'Montserrat', fontSize: fontSize),

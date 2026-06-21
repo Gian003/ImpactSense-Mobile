@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:impactsense/core/services/auth_service.dart';
 import 'package:impactsense/widgets/app_input_field.dart';
 import 'package:impactsense/widgets/role_toggle.dart';
 
@@ -15,7 +16,53 @@ class _PatrolRegistrationScreenState extends State<PatrolRegistrationScreen> {
   static const _primaryColor = Color(0xFF1A6B78);
 
   bool _passwordVisible = false;
-  bool _repeatPasswordVisible = false;
+  bool _loading = false;
+
+  final _emailCtrl = TextEditingController();
+  final _passwordCtrl = TextEditingController();
+
+  @override
+  void dispose() {
+    _emailCtrl.dispose();
+    _passwordCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _login() async {
+    final email = _emailCtrl.text.trim();
+    final password = _passwordCtrl.text;
+
+    if (email.isEmpty || password.isEmpty) {
+      _showError('Please enter your email and password.');
+      return;
+    }
+
+    setState(() => _loading = true);
+
+    final result = await AuthService.loginPatrol(
+      email: email,
+      password: password,
+    );
+
+    if (!mounted) return;
+    setState(() => _loading = false);
+
+    if (result.success) {
+      Navigator.pushReplacementNamed(context, '/patrol-home');
+    } else {
+      _showError(result.message);
+    }
+  }
+
+  void _showError(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message, style: const TextStyle(fontFamily: 'Montserrat')),
+        backgroundColor: Colors.red[700],
+        duration: const Duration(seconds: 3),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -40,7 +87,7 @@ class _PatrolRegistrationScreenState extends State<PatrolRegistrationScreen> {
               const SizedBox(height: 20),
 
               const Text(
-                'Create Account',
+                'Patrol Sign In',
                 style: TextStyle(
                   fontFamily: 'Montserrat',
                   fontSize: 22,
@@ -52,7 +99,7 @@ class _PatrolRegistrationScreenState extends State<PatrolRegistrationScreen> {
               const SizedBox(height: 6),
 
               const Text(
-                'Fill in your patrollers details to stay safe and connected.',
+                'Use your administrator-issued credentials to sign in.',
                 style: TextStyle(
                   fontFamily: 'Montserrat',
                   fontSize: 13,
@@ -63,7 +110,6 @@ class _PatrolRegistrationScreenState extends State<PatrolRegistrationScreen> {
 
               const SizedBox(height: 20),
 
-              // Role toggle — Patrols selected; tapping Riders goes to rider registration
               RoleToggle(
                 selectedIndex: 1,
                 onChanged: (i) {
@@ -75,29 +121,9 @@ class _PatrolRegistrationScreenState extends State<PatrolRegistrationScreen> {
 
               const SizedBox(height: 24),
 
-              // Name row
-              Row(
-                children: [
-                  Expanded(
-                    child: AppInputField(
-                      hint: 'First Name',
-                      prefixIcon: FontAwesomeIcons.userGroup,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: AppInputField(
-                      hint: 'Last Name',
-                      prefixIcon: FontAwesomeIcons.userGroup,
-                    ),
-                  ),
-                ],
-              ),
-
-              const SizedBox(height: 12),
-
               AppInputField(
                 hint: 'Email Address',
+                controller: _emailCtrl,
                 prefixIcon: FontAwesomeIcons.envelope,
                 keyboardType: TextInputType.emailAddress,
               ),
@@ -105,15 +131,8 @@ class _PatrolRegistrationScreenState extends State<PatrolRegistrationScreen> {
               const SizedBox(height: 12),
 
               AppInputField(
-                hint: 'Contact Number',
-                prefixIcon: FontAwesomeIcons.phone,
-                keyboardType: TextInputType.phone,
-              ),
-
-              const SizedBox(height: 12),
-
-              AppInputField(
                 hint: 'Password',
+                controller: _passwordCtrl,
                 prefixIcon: FontAwesomeIcons.key,
                 obscureText: !_passwordVisible,
                 suffixIcon: _passwordVisible
@@ -123,26 +142,12 @@ class _PatrolRegistrationScreenState extends State<PatrolRegistrationScreen> {
                     setState(() => _passwordVisible = !_passwordVisible),
               ),
 
-              const SizedBox(height: 12),
-
-              AppInputField(
-                hint: 'Repeat Password',
-                prefixIcon: FontAwesomeIcons.key,
-                obscureText: !_repeatPasswordVisible,
-                suffixIcon: _repeatPasswordVisible
-                    ? FontAwesomeIcons.eye
-                    : FontAwesomeIcons.eyeSlash,
-                onSuffixTap: () => setState(
-                    () => _repeatPasswordVisible = !_repeatPasswordVisible),
-              ),
-
               const SizedBox(height: 32),
 
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
-                  onPressed: () =>
-                      Navigator.pushNamed(context, '/otp-verify'),
+                  onPressed: _loading ? null : _login,
                   style: ElevatedButton.styleFrom(
                     foregroundColor: Colors.white,
                     backgroundColor: _primaryColor,
@@ -151,14 +156,23 @@ class _PatrolRegistrationScreenState extends State<PatrolRegistrationScreen> {
                       borderRadius: BorderRadius.circular(30),
                     ),
                   ),
-                  child: const Text(
-                    'Sign Up',
-                    style: TextStyle(
-                      fontFamily: 'Montserrat',
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
+                  child: _loading
+                      ? const SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2,
+                          ),
+                        )
+                      : const Text(
+                          'Sign In',
+                          style: TextStyle(
+                            fontFamily: 'Montserrat',
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                 ),
               ),
             ],

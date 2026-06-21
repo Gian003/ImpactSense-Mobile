@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:impactsense/core/services/auth_service.dart';
 import 'package:impactsense/screens/riders/settings/emergency_contacts_screen.dart';
 import 'package:impactsense/screens/riders/settings/privacy_policy_screen.dart';
 import 'package:impactsense/screens/riders/settings/terms_screen.dart';
@@ -78,13 +79,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   // Yes
                   Expanded(
                     child: GestureDetector(
-                      onTap: () {
+                      onTap: () async {
                         Navigator.pop(context);
-                        Navigator.pushNamedAndRemoveUntil(
-                          context,
-                          '/onboarding',
-                          (route) => false,
-                        );
+                        await AuthService.logout();
+                        if (context.mounted) {
+                          Navigator.pushNamedAndRemoveUntil(
+                            context,
+                            '/onboarding',
+                            (route) => false,
+                          );
+                        }
                       },
                       child: Container(
                         padding:

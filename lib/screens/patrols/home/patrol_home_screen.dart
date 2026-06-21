@@ -1,7 +1,13 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:impactsense/core/models/patrol_incident.dart';
+import 'package:impactsense/core/services/auth_service.dart';
+import 'package:impactsense/core/services/patrol_service.dart';
+import 'package:impactsense/core/services/realtime_service.dart';
+import 'package:impactsense/core/services/session_service.dart';
 
 // ── Root screen ───────────────────────────────────────────────────────────────
 
@@ -17,6 +23,90 @@ class _PatrolHomeScreenState extends State<PatrolHomeScreen> {
   static const _navBg = Color(0xFF0D3D47);
 
   int _tab = 1; // start on map tab
+  String _patrollerName = 'Patroller';
+  Timer? _locationTimer;
+  final _realtime = RealtimeService();
+
+  @override
+  void initState() {
+    super.initState();
+    _loadName();
+    _startLocationUpdates();
+    _connectRealtime();
+  }
+
+  @override
+  void dispose() {
+    _locationTimer?.cancel();
+    _realtime.disconnect();
+    super.dispose();
+  }
+
+  Future<void> _loadName() async {
+    final name = await SessionService.getName();
+    if (mounted && name != null) setState(() => _patrollerName = name);
+  }
+
+  Future<void> _connectRealtime() async {
+    await _realtime.connect();
+    // Each patrol unit listens on its own private channel: patrol.{id}
+    final token = await SessionService.getToken();
+    if (token == null) return;
+    // Retrieve patrol unit ID from backend profile if needed; for now we derive
+    // it from the session. The channel name uses the numeric ID stored by the
+    // login response.
+    final prefs = await _getPatrolUnitId();
+    if (prefs != null) {
+      await _realtime.listenForDispatch(prefs, _onDispatchReceived);
+    }
+  }
+
+  Future<int?> _getPatrolUnitId() async {
+    // The session currently stores name/email; extend SessionService to store
+    // the ID when needed. For now return null (channel subscription deferred).
+    return null;
+  }
+
+  void _onDispatchReceived(Map<String, dynamic> data) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          'DISPATCH: ${data['type']} at ${data['address'] ?? 'unknown location'}',
+          style: const TextStyle(fontFamily: 'Montserrat', fontWeight: FontWeight.bold),
+        ),
+        backgroundColor: Colors.red[700],
+        duration: const Duration(seconds: 6),
+      ),
+    );
+  }
+
+  Future<void> _startLocationUpdates() async {
+    bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) return;
+
+    LocationPermission permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.denied) return;
+    }
+    if (permission == LocationPermission.deniedForever) return;
+
+    _pushLocation();
+    _locationTimer = Timer.periodic(const Duration(seconds: 30), (_) => _pushLocation());
+  }
+
+  Future<void> _pushLocation() async {
+    try {
+      final pos = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
+      );
+      await PatrolService.updateLocation(
+        latitude: pos.latitude,
+        longitude: pos.longitude,
+      );
+    } catch (_) {}
+  }
 
   // In production this arrives via FCM / WebSocket from the admin backend
   final _incident = const PatrolIncident(
@@ -53,10 +143,12 @@ class _PatrolHomeScreenState extends State<PatrolHomeScreen> {
             _MapTab(
               incident: _incident,
               primaryColor: _primaryColor,
+              patrollerName: _patrollerName,
               onViewDetails: _viewDetails,
             ),
             _PatrolSettingsTab(
               primaryColor: _primaryColor,
+              patrollerName: _patrollerName,
               onBack: () => setState(() => _tab = 1),
             ),
           ],
@@ -74,9 +166,10 @@ class _PatrolHomeScreenState extends State<PatrolHomeScreen> {
 // ── Header ────────────────────────────────────────────────────────────────────
 
 class _PatrolHeader extends StatelessWidget {
-  const _PatrolHeader({required this.primaryColor});
+  const _PatrolHeader({required this.primaryColor, required this.patrollerName});
 
   final Color primaryColor;
+  final String patrollerName;
 
   @override
   Widget build(BuildContext context) {
@@ -111,9 +204,9 @@ class _PatrolHeader extends StatelessWidget {
                     color: Colors.white.withValues(alpha: 0.85),
                   ),
                 ),
-                const Text(
-                  'Patroller',
-                  style: TextStyle(
+                Text(
+                  patrollerName,
+                  style: const TextStyle(
                     fontFamily: 'Montserrat',
                     fontSize: 15,
                     fontWeight: FontWeight.bold,
@@ -496,11 +589,13 @@ class _MapTab extends StatefulWidget {
   const _MapTab({
     required this.incident,
     required this.primaryColor,
+    required this.patrollerName,
     required this.onViewDetails,
   });
 
   final PatrolIncident incident;
   final Color primaryColor;
+  final String patrollerName;
   final VoidCallback onViewDetails;
 
   @override
@@ -520,7 +615,7 @@ class _MapTabState extends State<_MapTab> {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        _PatrolHeader(primaryColor: widget.primaryColor),
+        _PatrolHeader(primaryColor: widget.primaryColor, patrollerName: widget.patrollerName),
         Padding(
           padding: const EdgeInsets.fromLTRB(12, 10, 12, 0),
           child: _AccidentCard(
@@ -560,10 +655,12 @@ class _MapTabState extends State<_MapTab> {
 class _PatrolSettingsTab extends StatefulWidget {
   const _PatrolSettingsTab({
     required this.primaryColor,
+    required this.patrollerName,
     required this.onBack,
   });
 
   final Color primaryColor;
+  final String patrollerName;
   final VoidCallback onBack;
 
   @override
@@ -626,11 +723,15 @@ class _PatrolSettingsTabState extends State<_PatrolSettingsTab> {
                   const SizedBox(width: 12),
                   Expanded(
                     child: ElevatedButton(
-                      onPressed: () => Navigator.pushNamedAndRemoveUntil(
-                        context,
-                        '/onboarding',
-                        (route) => false,
-                      ),
+                      onPressed: () async {
+                        final nav = Navigator.of(context);
+                        nav.pop();
+                        await AuthService.logout();
+                        nav.pushNamedAndRemoveUntil(
+                          '/onboarding',
+                          (route) => false,
+                        );
+                      },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF4CAF50),
                         foregroundColor: Colors.white,
@@ -737,9 +838,9 @@ class _PatrolSettingsTabState extends State<_PatrolSettingsTab> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text(
-                              'Vladimir',
-                              style: TextStyle(
+                            Text(
+                              widget.patrollerName,
+                              style: const TextStyle(
                                 fontFamily: 'Montserrat',
                                 fontSize: 16,
                                 fontWeight: FontWeight.bold,
@@ -747,7 +848,7 @@ class _PatrolSettingsTabState extends State<_PatrolSettingsTab> {
                               ),
                             ),
                             Text(
-                              'Vladimir@gmail.com',
+                              '',
                               style: TextStyle(
                                 fontFamily: 'Montserrat',
                                 fontSize: 13,

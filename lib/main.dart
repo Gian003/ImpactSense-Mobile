@@ -1,4 +1,6 @@
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'package:impactsense/core/services/fcm_service.dart';
 import 'package:impactsense/screens/auth/authenticaion_verify.dart';
 import 'package:impactsense/screens/auth/device_synced_screen.dart';
 import 'package:impactsense/screens/auth/login_screen.dart';
@@ -17,8 +19,10 @@ import 'package:impactsense/screens/patrols/settings/patrol_privacy_screen.dart'
 import 'package:impactsense/screens/onboarding/on_boarding_screen.dart';
 import 'package:impactsense/screens/splash/splash_screen.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp();
+  await FcmService.init();
   runApp(const MainApp());
 }
 

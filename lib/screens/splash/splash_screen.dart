@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:impactsense/core/services/session_service.dart';
 
 class SplashScreenWrapper extends StatefulWidget {
   const SplashScreenWrapper({super.key});
@@ -14,8 +15,8 @@ class SplashScreenWrapperState extends State<SplashScreenWrapper> {
 
   Future<void> _initializeApp() async {
     try {
-      await Future.delayed(const Duration(seconds: 5));
-      if (mounted) Navigator.pushReplacementNamed(context, '/onboarding');
+      await Future.delayed(const Duration(seconds: 2));
+      await _navigateBasedOnAuth();
     } catch (error) {
       if (kDebugMode) print('Initialization error: $error');
       if (mounted) {
@@ -27,10 +28,21 @@ class SplashScreenWrapperState extends State<SplashScreenWrapper> {
     }
   }
 
-  // TODO: Implement authentication check and navigation logic
-  // Future<void> _navigateBasedonAuth() async {
+  Future<void> _navigateBasedOnAuth() async {
+    final loggedIn = await SessionService.isLoggedIn();
+    if (!mounted) return;
 
-  // }
+    if (loggedIn) {
+      final role = await SessionService.getRole();
+      if (!mounted) return;
+      Navigator.pushReplacementNamed(
+        context,
+        role == 'patrol' ? '/patrol-home' : '/home',
+      );
+    } else {
+      Navigator.pushReplacementNamed(context, '/onboarding');
+    }
+  }
 
   @override
   void initState() {

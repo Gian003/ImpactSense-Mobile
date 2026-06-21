@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:impactsense/core/services/auth_service.dart';
 import 'package:impactsense/widgets/app_input_field.dart';
 import 'package:impactsense/widgets/role_toggle.dart';
 
@@ -15,8 +16,56 @@ class _LoginScreenState extends State<LoginScreen> {
 
   int _selectedTab = 0;
   bool _passwordVisible = false;
-  bool _repeatPasswordVisible = false;
   bool _keepLoggedIn = false;
+  bool _loading = false;
+
+  final _emailCtrl = TextEditingController();
+  final _passwordCtrl = TextEditingController();
+
+  @override
+  void dispose() {
+    _emailCtrl.dispose();
+    _passwordCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _login() async {
+    final email = _emailCtrl.text.trim();
+    final password = _passwordCtrl.text;
+
+    if (email.isEmpty || password.isEmpty) {
+      _showError('Please enter your email and password.');
+      return;
+    }
+
+    setState(() => _loading = true);
+
+    final result = _selectedTab == 0
+        ? await AuthService.loginRider(email: email, password: password)
+        : await AuthService.loginPatrol(email: email, password: password);
+
+    if (!mounted) return;
+    setState(() => _loading = false);
+
+    if (result.success) {
+      Navigator.pushReplacementNamed(
+        context,
+        _selectedTab == 0 ? '/home' : '/patrol-home',
+      );
+    } else {
+      _showError(result.message);
+    }
+  }
+
+  void _showError(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message, style: const TextStyle(fontFamily: 'Montserrat')),
+        backgroundColor: Colors.red[700],
+        duration: const Duration(seconds: 3),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -54,12 +103,18 @@ class _LoginScreenState extends State<LoginScreen> {
 
               const SizedBox(height: 20),
 
-              AppInputField(hint: 'Email Address', prefixIcon: FontAwesomeIcons.envelope),
+              AppInputField(
+                hint: 'Email Address',
+                controller: _emailCtrl,
+                prefixIcon: FontAwesomeIcons.envelope,
+                keyboardType: TextInputType.emailAddress,
+              ),
 
               const SizedBox(height: 12),
 
               AppInputField(
                 hint: 'Password',
+                controller: _passwordCtrl,
                 prefixIcon: FontAwesomeIcons.key,
                 obscureText: !_passwordVisible,
                 suffixIcon: _passwordVisible
@@ -67,19 +122,6 @@ class _LoginScreenState extends State<LoginScreen> {
                     : FontAwesomeIcons.eyeSlash,
                 onSuffixTap: () =>
                     setState(() => _passwordVisible = !_passwordVisible),
-              ),
-
-              const SizedBox(height: 12),
-
-              AppInputField(
-                hint: 'Repeat Password',
-                prefixIcon: FontAwesomeIcons.key,
-                obscureText: !_repeatPasswordVisible,
-                suffixIcon: _repeatPasswordVisible
-                    ? FontAwesomeIcons.eye
-                    : FontAwesomeIcons.eyeSlash,
-                onSuffixTap: () => setState(
-                    () => _repeatPasswordVisible = !_repeatPasswordVisible),
               ),
 
               const SizedBox(height: 8),
@@ -123,10 +165,7 @@ class _LoginScreenState extends State<LoginScreen> {
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
-                  onPressed: () => Navigator.pushReplacementNamed(
-                    context,
-                    _selectedTab == 0 ? '/home' : '/patrol-home',
-                  ),
+                  onPressed: _loading ? null : _login,
                   style: ElevatedButton.styleFrom(
                     foregroundColor: Colors.white,
                     backgroundColor: _primaryColor,
@@ -135,14 +174,23 @@ class _LoginScreenState extends State<LoginScreen> {
                       borderRadius: BorderRadius.circular(30),
                     ),
                   ),
-                  child: const Text(
-                    'Log in',
-                    style: TextStyle(
-                      fontFamily: 'Montserrat',
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
+                  child: _loading
+                      ? const SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2,
+                          ),
+                        )
+                      : const Text(
+                          'Log in',
+                          style: TextStyle(
+                            fontFamily: 'Montserrat',
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                 ),
               ),
             ],

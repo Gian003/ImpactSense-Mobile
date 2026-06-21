@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:impactsense/core/services/session_service.dart';
 import 'package:impactsense/screens/riders/map/live_navigation_screen.dart';
 import 'package:impactsense/screens/riders/settings/settings_screen.dart';
 
@@ -13,6 +14,20 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   static const _primaryColor = Color(0xFF1A6B78);
   int _currentNavIndex = 0;
+  String _firstName = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadName();
+  }
+
+  Future<void> _loadName() async {
+    final name = await SessionService.getName();
+    if (mounted && name != null) {
+      setState(() => _firstName = name.split(' ').first);
+    }
+  }
 
   void _showDeviceStatusHelp() {
     showDialog(context: context, builder: (_) => const _DeviceStatusDialog());
@@ -41,9 +56,9 @@ class _HomeScreenState extends State<HomeScreen> {
                 children: [
                   Image.asset('assets/logo/logo.png', height: 38, width: 38),
                   const SizedBox(width: 10),
-                  const Text(
-                    'Hello, Rester!',
-                    style: TextStyle(
+                  Text(
+                    _firstName.isNotEmpty ? 'Hello, $_firstName!' : 'Hello!',
+                    style: const TextStyle(
                       fontFamily: 'Montserrat',
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
@@ -54,9 +69,9 @@ class _HomeScreenState extends State<HomeScreen> {
                   CircleAvatar(
                     radius: 20,
                     backgroundColor: _primaryColor,
-                    child: const Text(
-                      'R',
-                      style: TextStyle(
+                    child: Text(
+                      _firstName.isNotEmpty ? _firstName[0].toUpperCase() : '?',
+                      style: const TextStyle(
                         fontFamily: 'Montserrat',
                         color: Colors.white,
                         fontWeight: FontWeight.bold,
