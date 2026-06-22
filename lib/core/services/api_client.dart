@@ -30,15 +30,15 @@ class ApiClient {
   // ════════════════════════════════════════════════════════════════════════════
 
   // ▼ ACTIVE TARGET — change this line only ▼
-  static const String baseUrl = 'http://192.168.1.5:8000/api';
+  static const String baseUrl = 'http://192.168.1.4:8000/api';
 
   static const Duration _timeout = Duration(seconds: 15);
 
   static Map<String, String> _headers({String? token}) => {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-        if (token != null) 'Authorization': 'Bearer $token',
-      };
+    'Content-Type': 'application/json',
+    'Accept': 'application/json',
+    if (token != null) 'Authorization': 'Bearer $token',
+  };
 
   static Future<Map<String, dynamic>> post(
     String endpoint,
@@ -61,10 +61,7 @@ class ApiClient {
     String? token,
   }) async {
     final response = await http
-        .get(
-          Uri.parse('$baseUrl/$endpoint'),
-          headers: _headers(token: token),
-        )
+        .get(Uri.parse('$baseUrl/$endpoint'), headers: _headers(token: token))
         .timeout(_timeout);
 
     return jsonDecode(response.body) as Map<String, dynamic>;
