@@ -1,0 +1,1 @@
+ C:\\Users\\GIAN\\Documents\\ImpactSense\\ImpactSense-Mobile\\.dart_tool\\flutter_build\\effe90e9d6a43f1ff2b230e9d265e41a\\native_assets.json: 

@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "545309015843",
+    "project_id": "impactsense-91503",
+    "storage_bucket": "impactsense-91503.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:545309015843:android:4d51b6f068ce2da68ed696",
+        "android_client_info": {
+          "package_name": "com.example.impactsense"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCLWsHeUBAbbkLgRYiLjTNN8uAX3w4LNto"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
