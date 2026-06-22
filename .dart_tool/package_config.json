@@ -201,9 +201,9 @@
     },
     {
       "name": "google_fonts",
-      "rootUri": "file:///C:/Users/GIAN/AppData/Local/Pub/Cache/hosted/pub.dev/google_fonts-4.0.5",
+      "rootUri": "file:///C:/Users/GIAN/AppData/Local/Pub/Cache/hosted/pub.dev/google_fonts-8.1.0",
       "packageUri": "lib/",
-      "languageVersion": "2.14"
+      "languageVersion": "3.9"
     },
     {
       "name": "google_maps",

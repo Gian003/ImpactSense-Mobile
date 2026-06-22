@@ -15,6 +15,8 @@ class AuthService {
     required String password,
     required String passwordConfirmation,
     String? phoneNumber,
+    String? address,
+    String? dateOfBirth,  // ISO format: YYYY-MM-DD
   }) async {
     try {
       final res = await ApiClient.post('rider/register', {
@@ -22,8 +24,9 @@ class AuthService {
         'email': email,
         'password': password,
         'password_confirmation': passwordConfirmation,
-        if (phoneNumber != null && phoneNumber.isNotEmpty)
-          'phone_number': phoneNumber,
+        if (phoneNumber  != null && phoneNumber.isNotEmpty)  'phone_number'  : phoneNumber,
+        if (address      != null && address.isNotEmpty)      'address'       : address,
+        if (dateOfBirth  != null && dateOfBirth.isNotEmpty)  'date_of_birth' : dateOfBirth,
       });
 
       if (res['success'] == true) {

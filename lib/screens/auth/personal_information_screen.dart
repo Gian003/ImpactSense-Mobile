@@ -31,6 +31,9 @@ class _PersonalInformationScreenState
   final _emergencyNumberCtrl  = TextEditingController();
   final _deviceIdCtrl         = TextEditingController();
 
+  // Date of birth — picked via date picker
+  DateTime? _dateOfBirth;
+
   // Location state (PSGC dropdowns)
   List<PsgcLocation> _provinces      = [];
   List<PsgcLocation> _municipalities = [];
@@ -129,6 +132,23 @@ class _PersonalInformationScreenState
     }
   }
 
+  Future<void> _pickDateOfBirth() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: DateTime(2000),
+      firstDate: DateTime(1950),
+      lastDate: DateTime.now().subtract(const Duration(days: 365 * 10)),
+      helpText: 'Select Date of Birth',
+      builder: (ctx, child) => Theme(
+        data: Theme.of(ctx).copyWith(
+          colorScheme: const ColorScheme.light(primary: _primaryColor),
+        ),
+        child: child!,
+      ),
+    );
+    if (picked != null) setState(() => _dateOfBirth = picked);
+  }
+
   Future<void> _save() async {
     final first  = _firstNameCtrl.text.trim();
     final last   = _lastNameCtrl.text.trim();
@@ -143,6 +163,19 @@ class _PersonalInformationScreenState
     final fullName = [first, if (middle.isNotEmpty) middle, last,
                       if (suffix.isNotEmpty) suffix].join(' ');
 
+    // Build full address string from selected PSGC locations
+    final addressParts = [
+      _selectedBarangay?.name,
+      _selectedMunicipality?.name,
+      _selectedProvince?.name,
+    ].whereType<String>().toList();
+    final address = addressParts.isNotEmpty ? addressParts.join(', ') : null;
+
+    // Format date of birth as YYYY-MM-DD
+    final dob = _dateOfBirth != null
+        ? '${_dateOfBirth!.year}-${_dateOfBirth!.month.toString().padLeft(2,'0')}-${_dateOfBirth!.day.toString().padLeft(2,'0')}'
+        : null;
+
     setState(() => _saving = true);
 
     final result = await AuthService.registerRider(
@@ -153,25 +186,42 @@ class _PersonalInformationScreenState
       phoneNumber          : _contactCtrl.text.trim().isNotEmpty
                              ? _contactCtrl.text.trim()
                              : _phone,
+      address              : address,
+      dateOfBirth          : dob,
     );
 
     if (!mounted) return;
     setState(() => _saving = false);
 
     if (result.success) {
-      // Pair helmet if a device ID was entered
-      final deviceId = _deviceIdCtrl.text.trim();
-      if (deviceId.isNotEmpty) {
-        final token = await SessionService.getToken();
-        if (token != null) {
-          try {
-            await ApiClient.post('rider/helmet/pair',
-                {'device_code': deviceId}, token: token);
-          } catch (_) {
-            // Non-fatal — user can pair later from settings
-          }
+      final token = await SessionService.getToken();
+
+      // Save emergency contact if provided during registration
+      final emergencyName  = _emergencyPersonCtrl.text.trim();
+      final emergencyPhone = _emergencyNumberCtrl.text.trim();
+      if (token != null && emergencyName.isNotEmpty && emergencyPhone.isNotEmpty) {
+        try {
+          await ApiClient.post('rider/emergency-contacts', {
+            'name'         : emergencyName,
+            'phone_number' : emergencyPhone,
+            'relationship' : 'Emergency Contact',
+          }, token: token);
+        } catch (_) {
+          // Non-fatal — contact can be added later
         }
       }
+
+      // Pair helmet if a device ID was entered
+      final deviceId = _deviceIdCtrl.text.trim();
+      if (token != null && deviceId.isNotEmpty) {
+        try {
+          await ApiClient.post('rider/helmet/pair',
+              {'device_code': deviceId}, token: token);
+        } catch (_) {
+          // Non-fatal — user can pair later from settings
+        }
+      }
+
       if (mounted) Navigator.pushNamed(context, '/device-synced');
     } else {
       _showError(result.message);
@@ -232,6 +282,40 @@ class _PersonalInformationScreenState
                 Expanded(child: AppInputField(compact: true, hint: 'Suffix',
                     controller: _suffixCtrl)),
               ]),
+
+              const SizedBox(height: 10),
+
+              // Date of Birth picker
+              GestureDetector(
+                onTap: _pickDateOfBirth,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 14, vertical: 13),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                        color: _primaryColor.withValues(alpha: 0.5)),
+                  ),
+                  child: Row(children: [
+                    const FaIcon(FontAwesomeIcons.cakeCandles,
+                        color: _primaryColor, size: 15),
+                    const SizedBox(width: 10),
+                    Text(
+                      _dateOfBirth != null
+                          ? '${_dateOfBirth!.day}/${_dateOfBirth!.month}/${_dateOfBirth!.year}'
+                          : 'Date of Birth',
+                      style: TextStyle(
+                        fontFamily: 'Montserrat',
+                        fontSize: 13,
+                        color: _dateOfBirth != null
+                            ? Colors.black87
+                            : Colors.grey[500],
+                      ),
+                    ),
+                  ]),
+                ),
+              ),
 
               const SizedBox(height: 16),
 
