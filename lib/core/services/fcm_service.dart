@@ -28,8 +28,12 @@ class FcmService {
     FirebaseMessaging.instance.onTokenRefresh.listen(_syncToken);
 
     // Upload current token on first launch
-    final token = await _messaging.getToken();
-    if (token != null) await _syncToken(token);
+    try {
+      final token = await _messaging.getToken();
+      if (token != null) await _syncToken(token);
+    } catch (e) {
+      if (kDebugMode) print('[FCM] getToken failed (Play Services unavailable?): $e');
+    }
   }
 
   /// Handle a foreground message (called from the app's UI layer).
