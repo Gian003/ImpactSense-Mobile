@@ -26,6 +26,7 @@ class _PatrolHomeScreenState extends State<PatrolHomeScreen> {
 
   int _tab = 1; // start on map tab
   String  _patrollerName = 'Patroller';
+  String  _patrollerEmail = '';
   Timer?  _locationTimer;
   final   _realtime = RealtimeService();
 
@@ -49,8 +50,13 @@ class _PatrolHomeScreenState extends State<PatrolHomeScreen> {
   }
 
   Future<void> _loadName() async {
-    final name = await SessionService.getName();
-    if (mounted && name != null) setState(() => _patrollerName = name);
+    final name  = await SessionService.getName();
+    final email = await SessionService.getEmail();
+    if (!mounted) return;
+    setState(() {
+      if (name  != null) _patrollerName  = name;
+      if (email != null) _patrollerEmail = email;
+    });
   }
 
   Future<void> _loadIncidents() async {
@@ -173,6 +179,7 @@ class _PatrolHomeScreenState extends State<PatrolHomeScreen> {
             _PatrolSettingsTab(
               primaryColor: _primaryColor,
               patrollerName: _patrollerName,
+              patrollerEmail: _patrollerEmail,
               onBack: () => setState(() => _tab = 1),
             ),
           ],
@@ -758,11 +765,13 @@ class _PatrolSettingsTab extends StatefulWidget {
   const _PatrolSettingsTab({
     required this.primaryColor,
     required this.patrollerName,
+    required this.patrollerEmail,
     required this.onBack,
   });
 
   final Color primaryColor;
   final String patrollerName;
+  final String patrollerEmail;
   final VoidCallback onBack;
 
   @override
@@ -955,7 +964,7 @@ class _PatrolSettingsTabState extends State<_PatrolSettingsTab> {
                               ),
                             ),
                             Text(
-                              '',
+                              widget.patrollerEmail,
                               style: TextStyle(
                                 fontFamily: 'Montserrat',
                                 fontSize: 13,

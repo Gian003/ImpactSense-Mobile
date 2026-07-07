@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:impactsense/core/services/auth_service.dart';
+import 'package:impactsense/core/services/session_service.dart';
 import 'package:impactsense/screens/maintenance/system_test_screen.dart';
 import 'package:impactsense/screens/riders/settings/emergency_contacts_screen.dart';
 import 'package:impactsense/screens/riders/settings/privacy_policy_screen.dart';
@@ -21,6 +22,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _pushNotifications = true;
   bool _locationAccess = true;
   bool _contactAccess = true;
+
+  String _name = '';
+  String _email = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadProfile();
+  }
+
+  Future<void> _loadProfile() async {
+    final name  = await SessionService.getName();
+    final email = await SessionService.getEmail();
+    if (!mounted) return;
+    setState(() {
+      if (name  != null) _name  = name;
+      if (email != null) _email = email;
+    });
+  }
 
   void _showLogoutDialog(BuildContext context) {
     showDialog(
@@ -194,24 +214,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             ),
                           ),
                           const SizedBox(width: 14),
-                          const Expanded(
+                          Expanded(
                             child: Column(
                               crossAxisAlignment:
                                   CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  'Rester',
-                                  style: TextStyle(
+                                  _name,
+                                  style: const TextStyle(
                                     fontFamily: 'Montserrat',
                                     fontSize: 16,
                                     fontWeight: FontWeight.bold,
                                     color: Colors.black87,
                                   ),
                                 ),
-                                SizedBox(height: 2),
+                                const SizedBox(height: 2),
                                 Text(
-                                  'Rester@gmail.com',
-                                  style: TextStyle(
+                                  _email,
+                                  style: const TextStyle(
                                     fontFamily: 'Montserrat',
                                     fontSize: 13,
                                     color: Colors.black54,
