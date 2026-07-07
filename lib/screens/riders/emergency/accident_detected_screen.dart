@@ -7,7 +7,12 @@ import 'package:impactsense/core/services/session_service.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class AccidentDetectedScreen extends StatefulWidget {
-  const AccidentDetectedScreen({super.key});
+  const AccidentDetectedScreen({super.key, this.alreadyReported = false});
+
+  /// True when this screen was opened automatically because the IoT device
+  /// already reported the crash to the backend (via FCM push) - in that case
+  /// the countdown must NOT post a second incident on expiry.
+  final bool alreadyReported;
 
   @override
   State<AccidentDetectedScreen> createState() =>
@@ -84,30 +89,32 @@ class _AccidentDetectedScreenState extends State<AccidentDetectedScreen> {
     setState(() => _reporting = true);
 
     int contactCount = 0;
+    final token = await SessionService.getToken();
 
-    // 1. Report incident to backend
-    try {
-      final token = await SessionService.getToken();
-      if (token != null) {
-        final res = await ApiClient.post('rider/incidents', {
-          'type'     : 'collision',
-          'latitude' : _lat  ?? 15.9754,
-          'longitude': _lng  ?? 120.5697,
-          'severity' : 'critical',
-        }, token: token);
-
-        if (res['success'] == true) {
-          // Load contact count to show on confirmation screen
-          final contacts = await ApiClient.get(
-              'rider/emergency-contacts', token: token);
-          if (contacts['success'] == true) {
-            final list = contacts['data'] as List? ?? [];
-            contactCount = list.length;
-          }
+    if (token != null) {
+      // Skip re-reporting if the IoT device already reported this crash -
+      // otherwise this would create a second, duplicate incident.
+      if (!widget.alreadyReported) {
+        try {
+          await ApiClient.post('rider/incidents', {
+            'type'     : 'collision',
+            'latitude' : _lat  ?? 15.9754,
+            'longitude': _lng  ?? 120.5697,
+            'severity' : 'critical',
+          }, token: token);
+        } catch (_) {
+          // Non-fatal — proceed to call 911 anyway
         }
       }
-    } catch (_) {
-      // Non-fatal — proceed to call 911 anyway
+
+      try {
+        final contacts = await ApiClient.get(
+            'rider/emergency-contacts', token: token);
+        if (contacts['success'] == true) {
+          final list = contacts['data'] as List? ?? [];
+          contactCount = list.length;
+        }
+      } catch (_) {}
     }
 
     // 2. Call 911
@@ -300,10 +307,12 @@ class _AccidentDetectedScreenState extends State<AccidentDetectedScreen> {
                         color: Colors.grey[200],
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      child: const Text(
-                        'Automatically calling and location sent to emergency contacts in (1) minute if no action is taken.',
+                      child: Text(
+                        widget.alreadyReported
+                            ? 'Your device already reported this crash. Calling 911 and confirming with emergency contacts in (1) minute if no action is taken.'
+                            : 'Automatically calling and location sent to emergency contacts in (1) minute if no action is taken.',
                         textAlign: TextAlign.center,
-                        style: TextStyle(fontFamily: 'Montserrat',
+                        style: const TextStyle(fontFamily: 'Montserrat',
                             fontSize: 13, color: Colors.black87),
                       ),
                     ),

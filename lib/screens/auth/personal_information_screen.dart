@@ -30,6 +30,7 @@ class _PersonalInformationScreenState
   final _emergencyPersonCtrl  = TextEditingController();
   final _emergencyNumberCtrl  = TextEditingController();
   final _deviceIdCtrl         = TextEditingController();
+  final _pairingKeyCtrl       = TextEditingController();
 
   // Date of birth — picked via date picker
   DateTime? _dateOfBirth;
@@ -86,6 +87,7 @@ class _PersonalInformationScreenState
     _emergencyPersonCtrl.dispose();
     _emergencyNumberCtrl.dispose();
     _deviceIdCtrl.dispose();
+    _pairingKeyCtrl.dispose();
     super.dispose();
   }
 
@@ -213,12 +215,25 @@ class _PersonalInformationScreenState
 
       // Pair helmet if a device ID was entered
       final deviceId = _deviceIdCtrl.text.trim();
+      final pairingKey = _pairingKeyCtrl.text.trim();
       if (token != null && deviceId.isNotEmpty) {
         try {
-          await ApiClient.post('rider/helmet/pair',
-              {'device_code': deviceId}, token: token);
+          final pairRes = await ApiClient.post('rider/helmet/pair', {
+            'device_code': deviceId,
+            'pairing_key': pairingKey,
+          }, token: token);
+
+          // ApiClient never throws on a non-2xx response (404/422/409 all just
+          // return normally) - success must be checked explicitly, otherwise a
+          // wrong/missing key silently "succeeds" from the user's perspective.
+          if (pairRes['success'] != true && mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+              content: Text(pairRes['message'] as String? ??
+                  'Device pairing failed. You can retry from Settings.'),
+            ));
+          }
         } catch (_) {
-          // Non-fatal — user can pair later from settings
+          // Connection error — non-fatal, user can pair later from settings
         }
       }
 
@@ -400,6 +415,14 @@ class _PersonalInformationScreenState
                   ),
                 ),
               ]),
+
+              const SizedBox(height: 10),
+
+              AppInputField(compact: true,
+                hint: 'Pairing Key (printed on your device)',
+                controller: _pairingKeyCtrl,
+                prefixIcon: FontAwesomeIcons.key,
+              ),
 
               const SizedBox(height: 32),
 

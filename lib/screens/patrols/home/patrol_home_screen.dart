@@ -85,9 +85,7 @@ class _PatrolHomeScreenState extends State<PatrolHomeScreen> {
   }
 
   Future<int?> _getPatrolUnitId() async {
-    // The session currently stores name/email; extend SessionService to store
-    // the ID when needed. For now return null (channel subscription deferred).
-    return null;
+    return SessionService.getUserId();
   }
 
   void _onDispatchReceived(Map<String, dynamic> data) {

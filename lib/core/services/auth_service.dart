@@ -37,6 +37,7 @@ class AuthService {
           role: 'rider',
           name: user['full_name'] as String?,
           email: user['email'] as String?,
+          userId: (user['id'] as num?)?.toInt(),
         );
         return AuthResult(success: true, message: res['message'] as String);
       }
@@ -68,6 +69,7 @@ class AuthService {
           role: 'rider',
           name: user['full_name'] as String?,
           email: user['email'] as String?,
+          userId: (user['id'] as num?)?.toInt(),
         );
         return AuthResult(success: true, message: res['message'] as String);
       }
@@ -96,6 +98,7 @@ class AuthService {
           role: 'patrol',
           name: unit['full_name'] as String?,
           email: unit['email'] as String?,
+          userId: (unit['id'] as num?)?.toInt(),
         );
         return AuthResult(success: true, message: res['message'] as String);
       }
