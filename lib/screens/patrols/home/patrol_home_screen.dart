@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:geolocator/geolocator.dart';
@@ -779,11 +780,91 @@ class _PatrolSettingsTab extends StatefulWidget {
 }
 
 class _PatrolSettingsTabState extends State<_PatrolSettingsTab> {
-  bool _pushNotifications = true;
-  bool _locationAccess = true;
+  // Real device permission state, not decorative — loaded in initState and
+  // re-synced after every change (see _promptOpenSettings below).
+  bool _pushNotifications = false;
+  bool _locationAccess = false;
 
   static const _bg = Color(0xFFF0F2F4);
   static const _cardDark = Color(0xFF163848);
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPermissionStates();
+  }
+
+  Future<void> _loadPermissionStates() async {
+    final locationPermission = await Geolocator.checkPermission();
+    final notificationSettings =
+        await FirebaseMessaging.instance.getNotificationSettings();
+    if (!mounted) return;
+    setState(() {
+      _locationAccess = locationPermission == LocationPermission.always ||
+          locationPermission == LocationPermission.whileInUse;
+      _pushNotifications = notificationSettings.authorizationStatus ==
+              AuthorizationStatus.authorized ||
+          notificationSettings.authorizationStatus ==
+              AuthorizationStatus.provisional;
+    });
+  }
+
+  // OS permissions can be requested, but never silently revoked from inside
+  // the app — turning a switch "off" opens Settings instead, then re-syncs
+  // the switch to whatever the user actually chose there. This matters more
+  // here than for riders: turning location off mid-shift would silently stop
+  // the 30s dispatch-location pings without the patrol realizing why.
+  Future<void> _toggleLocationAccess(bool wantOn) async {
+    if (wantOn) {
+      final result = await Geolocator.requestPermission();
+      final granted = result == LocationPermission.always ||
+          result == LocationPermission.whileInUse;
+      if (mounted) setState(() => _locationAccess = granted);
+      if (!granted) await _promptOpenSettings('Location');
+    } else {
+      await _promptOpenSettings('Location');
+      await _loadPermissionStates();
+    }
+  }
+
+  Future<void> _toggleNotifications(bool wantOn) async {
+    if (wantOn) {
+      final settings = await FirebaseMessaging.instance.requestPermission();
+      final granted =
+          settings.authorizationStatus == AuthorizationStatus.authorized ||
+              settings.authorizationStatus == AuthorizationStatus.provisional;
+      if (mounted) setState(() => _pushNotifications = granted);
+      if (!granted) await _promptOpenSettings('Notification');
+    } else {
+      await _promptOpenSettings('Notification');
+      await _loadPermissionStates();
+    }
+  }
+
+  Future<void> _promptOpenSettings(String feature) async {
+    if (!mounted) return;
+    final openSettings = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: Text('$feature Access'),
+        content: Text(
+          '$feature access is controlled from your device settings. '
+          'Open Settings now to change it?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Not now'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Open Settings'),
+          ),
+        ],
+      ),
+    );
+    if (openSettings == true) await Geolocator.openAppSettings();
+  }
 
   void _showLogoutDialog() {
     showDialog(
@@ -1038,8 +1119,7 @@ class _PatrolSettingsTabState extends State<_PatrolSettingsTab> {
                   label: 'Push Notifications',
                   trailing: _LabeledSwitch(
                     value: _pushNotifications,
-                    onChanged: (v) =>
-                        setState(() => _pushNotifications = v),
+                    onChanged: _toggleNotifications,
                     primaryColor: widget.primaryColor,
                   ),
                 ),
@@ -1053,8 +1133,7 @@ class _PatrolSettingsTabState extends State<_PatrolSettingsTab> {
                   label: 'Location access',
                   trailing: _LabeledSwitch(
                     value: _locationAccess,
-                    onChanged: (v) =>
-                        setState(() => _locationAccess = v),
+                    onChanged: _toggleLocationAccess,
                     primaryColor: widget.primaryColor,
                   ),
                 ),

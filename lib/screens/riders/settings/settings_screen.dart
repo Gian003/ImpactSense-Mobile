@@ -1,5 +1,7 @@
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:impactsense/core/services/auth_service.dart';
 import 'package:impactsense/core/services/session_service.dart';
 import 'package:impactsense/screens/maintenance/system_test_screen.dart';
@@ -19,9 +21,10 @@ class SettingsScreen extends StatefulWidget {
 class _SettingsScreenState extends State<SettingsScreen> {
   static const _primaryColor = Color(0xFF1A6B78);
 
-  bool _pushNotifications = true;
-  bool _locationAccess = true;
-  bool _contactAccess = true;
+  // Real device permission state, not decorative — loaded in initState and
+  // re-synced after every change (see _promptOpenSettings below).
+  bool _pushNotifications = false;
+  bool _locationAccess = false;
 
   String _name = '';
   String _email = '';
@@ -30,6 +33,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   void initState() {
     super.initState();
     _loadProfile();
+    _loadPermissionStates();
   }
 
   Future<void> _loadProfile() async {
@@ -40,6 +44,76 @@ class _SettingsScreenState extends State<SettingsScreen> {
       if (name  != null) _name  = name;
       if (email != null) _email = email;
     });
+  }
+
+  Future<void> _loadPermissionStates() async {
+    final locationPermission = await Geolocator.checkPermission();
+    final notificationSettings =
+        await FirebaseMessaging.instance.getNotificationSettings();
+    if (!mounted) return;
+    setState(() {
+      _locationAccess = locationPermission == LocationPermission.always ||
+          locationPermission == LocationPermission.whileInUse;
+      _pushNotifications = notificationSettings.authorizationStatus ==
+              AuthorizationStatus.authorized ||
+          notificationSettings.authorizationStatus ==
+              AuthorizationStatus.provisional;
+    });
+  }
+
+  // OS location permission can be requested, but never silently revoked from
+  // inside the app — turning the switch "off" opens Settings instead, then
+  // re-syncs the switch to whatever the user actually chose there.
+  Future<void> _toggleLocationAccess(bool wantOn) async {
+    if (wantOn) {
+      final result = await Geolocator.requestPermission();
+      final granted = result == LocationPermission.always ||
+          result == LocationPermission.whileInUse;
+      if (mounted) setState(() => _locationAccess = granted);
+      if (!granted) await _promptOpenSettings('Location');
+    } else {
+      await _promptOpenSettings('Location');
+      await _loadPermissionStates();
+    }
+  }
+
+  Future<void> _toggleNotifications(bool wantOn) async {
+    if (wantOn) {
+      final settings = await FirebaseMessaging.instance.requestPermission();
+      final granted =
+          settings.authorizationStatus == AuthorizationStatus.authorized ||
+              settings.authorizationStatus == AuthorizationStatus.provisional;
+      if (mounted) setState(() => _pushNotifications = granted);
+      if (!granted) await _promptOpenSettings('Notification');
+    } else {
+      await _promptOpenSettings('Notification');
+      await _loadPermissionStates();
+    }
+  }
+
+  Future<void> _promptOpenSettings(String feature) async {
+    if (!mounted) return;
+    final openSettings = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: Text('$feature Access'),
+        content: Text(
+          '$feature access is controlled from your device settings. '
+          'Open Settings now to change it?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Not now'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Open Settings'),
+          ),
+        ],
+      ),
+    );
+    if (openSettings == true) await Geolocator.openAppSettings();
   }
 
   void _showLogoutDialog(BuildContext context) {
@@ -347,8 +421,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           ),
                           _LabeledSwitch(
                             value: _pushNotifications,
-                            onChanged: (v) => setState(
-                                () => _pushNotifications = v),
+                            onChanged: _toggleNotifications,
                           ),
                         ],
                       ),
@@ -360,46 +433,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     const _SectionLabel(text: 'Permissions'),
                     const SizedBox(height: 8),
                     _OutlineCard(
-                      child: Column(
+                      child: Row(
                         children: [
-                          Row(
-                            children: [
-                              const Expanded(
-                                child: Text(
-                                  'Location access',
-                                  style: TextStyle(
-                                    fontFamily: 'Montserrat',
-                                    fontSize: 13,
-                                    color: Colors.black87,
-                                  ),
-                                ),
+                          const Expanded(
+                            child: Text(
+                              'Location access',
+                              style: TextStyle(
+                                fontFamily: 'Montserrat',
+                                fontSize: 13,
+                                color: Colors.black87,
                               ),
-                              _LabeledSwitch(
-                                value: _locationAccess,
-                                onChanged: (v) => setState(
-                                    () => _locationAccess = v),
-                              ),
-                            ],
+                            ),
                           ),
-                          const Divider(height: 20),
-                          Row(
-                            children: [
-                              const Expanded(
-                                child: Text(
-                                  'Contact access',
-                                  style: TextStyle(
-                                    fontFamily: 'Montserrat',
-                                    fontSize: 13,
-                                    color: Colors.black87,
-                                  ),
-                                ),
-                              ),
-                              _LabeledSwitch(
-                                value: _contactAccess,
-                                onChanged: (v) => setState(
-                                    () => _contactAccess = v),
-                              ),
-                            ],
+                          _LabeledSwitch(
+                            value: _locationAccess,
+                            onChanged: _toggleLocationAccess,
                           ),
                         ],
                       ),
