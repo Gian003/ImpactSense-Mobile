@@ -101,8 +101,9 @@ class RealtimeService {
       throw Exception('Cannot authorize private channel: no session token.');
     }
 
+    final base = await ApiClient.baseUrl;
     final response = await http.post(
-      Uri.parse('${ApiClient.baseUrl}/broadcasting/auth'),
+      Uri.parse('$base/broadcasting/auth'),
       headers: {
         'Accept': 'application/json',
         'Authorization': 'Bearer $token',
