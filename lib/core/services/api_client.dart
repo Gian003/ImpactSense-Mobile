@@ -32,7 +32,7 @@ class ApiClient {
 
   // Only used when _mode == BaseUrlMode.rawIp. Run `ipconfig` on the PC
   // running the backend and paste its Wi-Fi IPv4 address here.
-  static const String _rawIpFallback = '192.168.1.5';
+  static const String _rawIpFallback = '10.68.249.203';
 
   static const Duration _timeout = Duration(seconds: 15);
 
