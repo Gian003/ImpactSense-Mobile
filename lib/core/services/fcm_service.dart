@@ -51,16 +51,38 @@ class FcmService {
     FirebaseMessaging.onMessageOpenedApp.listen(handler);
   }
 
+  /// Called from the Settings screen toggle. Registers the current device
+  /// token server-side when turning on, or clears it server-side when
+  /// turning off. Returns whether the change was persisted to the backend.
+  static Future<bool> setPushNotificationsEnabled(bool enabled) async {
+    try {
+      if (enabled) {
+        final token = await _messaging.getToken();
+        if (token == null) return false;
+        await _updateServerToken(token);
+      } else {
+        await _updateServerToken(null);
+      }
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
   static Future<void> _syncToken(String token) async {
+    try {
+      await _updateServerToken(token);
+    } catch (_) {
+      // Non-fatal — token will sync on next launch.
+    }
+  }
+
+  static Future<void> _updateServerToken(String? token) async {
     final sessionToken = await SessionService.getToken();
     final role = await SessionService.getRole();
     if (sessionToken == null) return;
 
     final endpoint = role == 'patrol' ? 'patrol/fcm-token' : 'rider/fcm-token';
-    try {
-      await ApiClient.post(endpoint, {'fcm_token': token}, token: sessionToken);
-    } catch (_) {
-      // Non-fatal — token will sync on next launch.
-    }
+    await ApiClient.post(endpoint, {'fcm_token': token}, token: sessionToken);
   }
 }
